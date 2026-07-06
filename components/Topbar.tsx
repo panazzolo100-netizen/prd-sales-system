@@ -1,16 +1,23 @@
 export function Topbar() {
   return (
-    <header className="flex items-center justify-between mb-10">
+    <header className="mb-8 flex items-center justify-between">
       <div>
-        <h2 className="text-4xl font-bold">Dashboard</h2>
-        <p className="text-zinc-400 mt-2">
-          Visão geral comercial da PRD Energia Solar
+        <h2 className="text-3xl font-bold">CRM PRD Engenharia</h2>
+        <p className="text-zinc-400">
+          Sistema Comercial e Engenharia
         </p>
       </div>
 
-      <button className="bg-orange-500 hover:bg-orange-600 transition px-5 py-3 rounded-xl font-semibold">
-        Novo Lead
-      </button>
+      <div className="flex items-center gap-4">
+        <input
+          placeholder="Pesquisar..."
+          className="rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-orange-500"
+        />
+
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 font-bold">
+          DP
+        </div>
+      </div>
     </header>
   );
 }

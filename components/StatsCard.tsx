@@ -1,25 +1,21 @@
-type StatsCardProps = {
-  label: string;
+type Props = {
+  title: string;
   value: string;
-  description?: string;
+  color?: string;
 };
 
 export function StatsCard({
-  label,
+  title,
   value,
-  description,
-}: StatsCardProps) {
+  color = "text-orange-500",
+}: Props) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      <p className="text-sm text-zinc-400">{label}</p>
+      <p className="text-zinc-400">{title}</p>
 
-      <h3 className="mt-4 text-4xl font-bold">{value}</h3>
-
-      {description ? (
-        <p className="mt-3 text-sm text-zinc-500">
-          {description}
-        </p>
-      ) : null}
+      <h2 className={`mt-3 text-4xl font-bold ${color}`}>
+        {value}
+      </h2>
     </div>
   );
 }

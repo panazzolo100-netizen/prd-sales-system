@@ -1,36 +1,54 @@
 import Link from "next/link";
+import { Topbar } from "./Topbar";
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
-  const menu = [
-    ["Dashboard", "/"],
-    ["Leads", "/leads"],
-    ["Clientes", "/clientes"],
-    ["Propostas", "/propostas"],
-    ["Engenharia", "/engenharia"],
-    ["Financeiro", "/financeiro"],
-    ["Agenda", "/agenda"],
-  ];
+const menu = [
+  { nome: "Dashboard", rota: "/" },
+  { nome: "Leads", rota: "/leads" },
+  { nome: "Clientes", rota: "/clientes" },
+  { nome: "Propostas", rota: "/propostas" },
+  { nome: "Agenda", rota: "/agenda" },
+  { nome: "Financeiro", rota: "/financeiro" },
+  { nome: "Engenharia", rota: "/engenharia" },
+];
 
+export function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <main className="flex min-h-screen bg-zinc-950 text-white">
       <aside className="w-72 border-r border-zinc-800 bg-zinc-900 p-6">
-        <h1 className="text-4xl font-black text-orange-500">PRD</h1>
-        <p className="mb-10 text-zinc-400">Sales System</p>
+
+        <h1 className="text-4xl font-black text-orange-500">
+          PRD
+        </h1>
+
+        <p className="mb-10 text-zinc-500">
+          Sales System
+        </p>
 
         <nav className="space-y-2">
-          {menu.map(([label, href]) => (
+          {menu.map((item) => (
             <Link
-              key={href}
-              href={href}
-              className="block rounded-xl px-4 py-3 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+              key={item.rota}
+              href={item.rota}
+              className="block rounded-xl px-4 py-3 transition hover:bg-zinc-800"
             >
-              {label}
+              {item.nome}
             </Link>
           ))}
         </nav>
+
       </aside>
 
-      <section className="flex-1 p-10">{children}</section>
+      <section className="flex-1 p-8">
+
+        <Topbar />
+
+        {children}
+
+      </section>
     </main>
   );
 }
