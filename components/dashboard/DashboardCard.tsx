@@ -1,21 +1,38 @@
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+
 type Props = {
   titulo: string;
   valor: string | number;
   cor?: string;
+  crescimento?: string;
 };
 
 export function DashboardCard({
   titulo,
   valor,
   cor = "text-orange-500",
+  crescimento,
 }: Props) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      <p className="text-zinc-400">{titulo}</p>
+    <Card className="transition-all duration-300 hover:scale-[1.02] hover:border-orange-500">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-zinc-400">
+            {titulo}
+          </p>
 
-      <h2 className={`mt-3 text-4xl font-bold ${cor}`}>
-        {valor}
-      </h2>
-    </div>
+          <h2 className={`mt-3 text-5xl font-black ${cor}`}>
+            {valor}
+          </h2>
+        </div>
+
+        {crescimento && (
+          <Badge>
+            {crescimento}
+          </Badge>
+        )}
+      </div>
+    </Card>
   );
 }

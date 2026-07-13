@@ -1,16 +1,21 @@
-import { supabase } from "@/lib/supabase";
+import { prisma } from "@/lib/prisma";
 
 export default async function Clientes() {
-  const { data: clientes } = await supabase
-    .from("clientes")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const clientes = await prisma.client.findMany({
+    where: {
+      companyId: "default-company",
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
   return (
     <main className="min-h-screen bg-zinc-950 p-10 text-white">
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold">Clientes</h1>
+
           <p className="text-zinc-400">
             Cadastro de clientes da PRD Engenharia
           </p>
@@ -33,19 +38,32 @@ export default async function Clientes() {
           </thead>
 
           <tbody>
-            {clientes?.map((cliente) => (
+            {clientes.map((cliente) => (
               <tr
                 key={cliente.id}
                 className="border-b border-zinc-800 hover:bg-zinc-800"
               >
-                <td className="p-5">{cliente.nome}</td>
-                <td className="p-5">{cliente.cidade}</td>
-                <td className="p-5">{cliente.telefone}</td>
-                <td className="p-5">{cliente.email}</td>
+                <td className="p-5">
+                  {cliente.name}
+                </td>
+
+                <td className="p-5">
+                  {cliente.city
+                    ? `${cliente.city}${cliente.state ? ` - ${cliente.state}` : ""}`
+                    : "-"}
+                </td>
+
+                <td className="p-5">
+                  {cliente.phone ?? "-"}
+                </td>
+
+                <td className="p-5">
+                  {cliente.email ?? "-"}
+                </td>
               </tr>
             ))}
 
-            {clientes?.length === 0 && (
+            {clientes.length === 0 && (
               <tr>
                 <td
                   colSpan={4}

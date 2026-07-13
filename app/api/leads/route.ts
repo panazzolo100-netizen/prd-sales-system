@@ -1,91 +1,99 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import {
+  createCompanyLead,
+  listCompanyLeads,
+  updateCompanyLead,
+} from "@/services/leads.service";
+import {
+  createLeadSchema,
+  updateLeadSchema,
+} from "@/validators/lead.schema";
+
+const TEMP_COMPANY_ID = "default-company";
 
 export async function GET() {
-  const { data, error } = await supabase
-    .from("leads")
-    .select("*")
-    .order("created_at", { ascending: false });
+  try {
+    const leads = await listCompanyLeads(TEMP_COMPANY_ID);
 
-  if (error) {
-    console.log("ERRO AO BUSCAR LEADS:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(leads);
+  } catch (error) {
+    console.error("ERRO AO BUSCAR LEADS:", error);
+
+    return NextResponse.json(
+      { error: "Erro ao buscar leads." },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  try {
+    const body = await request.json();
 
-  const { data, error } = await supabase
-    .from("leads")
-    .insert({
-      nome: body.nome,
-      telefone: body.telefone,
-      email: body.email,
-      cidade: body.cidade,
-      origem: body.origem,
-      status: "Novo",
-      observacoes: body.observacao,
-    })
-    .select()
-    .single();
+    const parsed = createLeadSchema.safeParse({
+      ...body,
+      companyId: TEMP_COMPANY_ID,
+    });
 
-  if (error) {
-    console.log("ERRO AO CRIAR LEAD:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json(data);
-}
-
-export async function PATCH(request: Request) {
-  const body = await request.json();
-
-  const { data: lead, error: leadError } = await supabase
-    .from("leads")
-    .update({ status: body.status })
-    .eq("id", body.id)
-    .select()
-    .single();
-
-  if (leadError) {
-    console.log("ERRO AO ATUALIZAR LEAD:", leadError);
-    return NextResponse.json({ error: leadError.message }, { status: 500 });
-  }
-
-  if (body.status === "Ganho") {
-    console.log("CRIANDO CLIENTE A PARTIR DO LEAD:", lead);
-
-    const { data: cliente, error: clienteError } = await supabase
-      .from("clientes")
-      .insert({
-        nome: lead.nome,
-        telefone: lead.telefone,
-        email: lead.email,
-        cidade: lead.cidade,
-        tipo: "Cliente Solar",
-        observacoes: `Convertido automaticamente do lead. Origem: ${
-          lead.origem || "-"
-        }`,
-      })
-      .select()
-      .single();
-
-    if (clienteError) {
-      console.log("ERRO AO CRIAR CLIENTE:", clienteError);
-
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: clienteError.message },
-        { status: 500 }
+        {
+          error: "Dados inválidos.",
+          details: parsed.error.flatten().fieldErrors,
+        },
+        { status: 400 }
       );
     }
 
-    console.log("CLIENTE CRIADO COM SUCESSO:", cliente);
+    const lead = await createCompanyLead(parsed.data);
 
-    return NextResponse.json({ lead, cliente });
+    return NextResponse.json(lead, { status: 201 });
+  } catch (error) {
+    console.error("ERRO AO CRIAR LEAD:", error);
+
+    return NextResponse.json(
+      { error: "Erro ao criar lead." },
+      { status: 500 }
+    );
   }
+}
 
-  return NextResponse.json({ lead });
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+
+    if (!body.id) {
+      return NextResponse.json(
+        { error: "ID do lead é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    const parsed = updateLeadSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Dados inválidos.",
+          details: parsed.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    const lead = await updateCompanyLead(
+      body.id,
+      TEMP_COMPANY_ID,
+      parsed.data
+    );
+
+    return NextResponse.json(lead);
+  } catch (error) {
+    console.error("ERRO AO ATUALIZAR LEAD:", error);
+
+    return NextResponse.json(
+      { error: "Erro ao atualizar lead." },
+      { status: 500 }
+    );
+  }
 }

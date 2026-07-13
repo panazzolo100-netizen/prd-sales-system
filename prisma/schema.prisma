@@ -1,0 +1,644 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["crm"]
+}
+
+enum UserRole {
+  ADMIN
+  COMERCIAL
+  ENGENHARIA
+  FINANCEIRO
+
+  @@schema("crm")
+}
+
+enum LeadStatus {
+  NOVO
+  CONTATO
+  VISITA
+  PROPOSTA
+  NEGOCIACAO
+  GANHO
+  PERDIDO
+
+  @@schema("crm")
+}
+
+enum ServiceOrderPhotoCategory {
+  ANTES
+  DURANTE
+  DEPOIS
+
+  @@schema("crm")
+}
+enum ProjectDocumentType {
+  CONTRATO
+  ART
+  PROJETO
+  MEMORIAL
+  NOTA_FISCAL
+  GARANTIA
+  MANUAL
+  OUTRO
+
+  @@schema("crm")
+}
+
+model Company {
+  id String @id @default(cuid())
+
+  serviceOrders ServiceOrder[]
+
+  cashFlow CashFlow[]
+
+  name String
+
+  document String?
+
+  phone String?
+
+  financials Financial[]
+
+  email String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  leads Lead[]
+
+  clients Client[]
+
+  projects Project[]
+
+  @@schema("crm")
+}
+
+model User {
+  id String @id @default(cuid())
+
+  name String
+
+  email String @unique
+
+  password String?
+
+  role UserRole @default(COMERCIAL)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  companyId String
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  leads Lead[]
+
+  activities Activity[]
+
+  @@schema("crm")
+}
+
+model Lead {
+  id String @id @default(cuid())
+
+  companyName String
+
+  contactName String
+
+  phone String?
+
+  email String?
+
+  city String?
+
+  state String?
+
+  source String?
+
+  status LeadStatus @default(NOVO)
+
+  distributor String?
+
+  consumerUnit String?
+
+  consumptionKwh Float?
+
+  demandKw Float?
+
+  estimatedValue Float?
+
+  expectedSaving Float?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  companyId String
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  ownerId String?
+
+  owner User? @relation(fields: [ownerId], references: [id])
+
+  client Client?
+
+  activities Activity[]
+
+  files LeadFile[]
+
+  engineering LeadEngineering?
+
+  dimensioning LeadDimensioning?
+
+  proposal Proposal?
+
+  @@schema("crm")
+}
+
+model LeadFile {
+  id String @id @default(cuid())
+
+  name String
+
+  url String
+
+  mimeType String
+
+  size Int
+
+  createdAt DateTime @default(now())
+
+  leadId String
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@schema("crm")
+}
+
+model LeadEngineering {
+  id String @id @default(cuid())
+
+  systemType String?
+
+  installedPower Float?
+
+  modules Int?
+
+  modulePower Float?
+
+  moduleBrand String?
+
+  inverter String?
+
+  distributor String?
+
+  consumerUnit String?
+
+  tariffGroup String?
+
+  consumerClass String?
+
+  contractedDemand Float?
+
+  measuredDemand Float?
+
+  roofType String?
+
+  roofArea Float?
+
+  roofOrientation String?
+
+  roofSlope Float?
+
+  shading String?
+
+  structureType String?
+
+  voltage String?
+
+  phase String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  leadId String @unique
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@schema("crm")
+}
+
+model LeadDimensioning {
+  id String @id @default(cuid())
+
+  monthlyConsumption Float?
+
+  solarIrradiation Float?
+
+  lossFactor Float?
+
+  modulePower Float?
+
+  moduleQuantity Int?
+
+  installedPower Float?
+
+  estimatedGeneration Float?
+
+  systemValue Float?
+
+  energyTariff Float?
+
+  monthlySaving Float?
+
+  annualSaving Float?
+
+  paybackYears Float?
+
+  requiredArea Float?
+
+  estimatedSaving Float?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  leadId String @unique
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@schema("crm")
+}
+
+model Client {
+  id String @id @default(cuid())
+
+  name String
+
+  document String?
+
+  phone String?
+
+  email String?
+
+  city String?
+
+  state String?
+
+  address String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  companyId String
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  leadId String? @unique
+
+  lead Lead? @relation(fields: [leadId], references: [id])
+
+  proposals Proposal[]
+
+  projects Project[]
+
+  @@schema("crm")
+}
+
+model Proposal {
+  id String @id @default(cuid())
+
+  title String
+
+  amount Float
+
+  systemPower Float?
+
+  monthlySaving Float?
+
+  annualSaving Float?
+
+  payback Float?
+
+  status String @default("RASCUNHO")
+
+  validUntil DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  leadId String? @unique
+
+  lead Lead? @relation(fields: [leadId], references: [id])
+
+  clientId String?
+
+  client Client? @relation(fields: [clientId], references: [id])
+
+  @@schema("crm")
+}
+
+model Project {
+  id String @id @default(cuid())
+
+  serviceOrder ServiceOrder?
+
+  documents ProjectDocument[]
+
+  title String
+
+  status String @default("NOVO")
+
+  description String?
+
+  financial Financial?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  companyId String
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  clientId String
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@schema("crm")
+}
+
+model Activity {
+  id String @id @default(cuid())
+
+  type String
+
+  title String
+
+  notes String?
+
+  dueDate DateTime?
+
+  done Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  leadId String
+
+  lead Lead @relation(fields: [leadId], references: [id])
+
+  userId String?
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@schema("crm")
+}
+
+model Financial {
+  id String @id @default(cuid())
+
+  saleValue     Float @default(0)
+  costValue     Float @default(0)
+  receivedValue Float @default(0)
+
+  cashFlow CashFlow[]
+
+  installments FinancialInstallment[]
+
+  attachments FinancialAttachment[]
+
+  status String @default("PENDENTE")
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  projectId String  @unique
+  project   Project @relation(fields: [projectId], references: [id])
+
+  @@schema("crm")
+}
+
+model ServiceOrder {
+  id String @id @default(cuid())
+
+  number String @unique
+  title  String
+  status String @default("ABERTA")
+
+  responsible String?
+  team        String?
+
+  scheduledDate DateTime?
+  startedDate   DateTime?
+  completedDate DateTime?
+
+  services  String?
+  materials String?
+  notes     String?
+
+  checklistArt                Boolean @default(false)
+  checklistProjectApproved    Boolean @default(false)
+  checklistMaterialsSeparated Boolean @default(false)
+  checklistStructureInstalled Boolean @default(false)
+  checklistModulesInstalled   Boolean @default(false)
+  checklistInverterInstalled  Boolean @default(false)
+  checklistDcCabling          Boolean @default(false)
+  checklistAcCabling          Boolean @default(false)
+  checklistCommissioning      Boolean @default(false)
+  checklistCustomerTraining   Boolean @default(false)
+  checklistDelivered          Boolean @default(false)
+
+  customerName      String?
+  customerDocument  String?
+  customerSignature String?
+
+  technicianName      String?
+  technicianSignature String?
+
+  signedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  projectId String  @unique
+  project   Project @relation(fields: [projectId], references: [id])
+
+  photos ServiceOrderPhoto[]
+
+  timeline ServiceOrderTimeline[]
+
+  @@schema("crm")
+}
+
+model ServiceOrderPhoto {
+  id String @id @default(cuid())
+
+  name     String
+  url      String
+  mimeType String
+  size     Int
+
+  category ServiceOrderPhotoCategory
+
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  serviceOrderId String
+
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+
+  @@index([serviceOrderId])
+  @@index([serviceOrderId, category])
+  @@schema("crm")
+}
+model ServiceOrderTimeline {
+  id String @id @default(cuid())
+
+  type String
+  title String
+  description String?
+
+  createdAt DateTime @default(now())
+
+  serviceOrderId String
+
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+
+  @@index([serviceOrderId])
+  @@schema("crm")
+}
+model ProjectDocument {
+  id String @id @default(cuid())
+
+  name     String
+  url      String
+  mimeType String
+  size     Int
+
+  type ProjectDocumentType
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, type])
+  @@schema("crm")
+}
+model CashFlow {
+  id String @id @default(cuid())
+
+  description String
+
+  type String
+
+  category String?
+
+  value Float
+
+  dueDate DateTime?
+
+  paidAt DateTime?
+
+  status String @default("PENDENTE")
+
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  companyId String
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  financialId String?
+
+  financial Financial? @relation(fields: [financialId], references: [id])
+
+  @@index([companyId])
+
+  @@index([status])
+
+  @@schema("crm")
+}
+model FinancialInstallment {
+  id String @id @default(cuid())
+
+  number Int
+
+  description String?
+
+  value Float
+
+  dueDate DateTime
+
+  paidAt DateTime?
+
+  status String @default("PENDENTE")
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  financialId String
+
+  financial Financial @relation(fields: [financialId], references: [id], onDelete: Cascade)
+
+  @@unique([financialId, number])
+  @@index([financialId])
+  @@index([dueDate])
+  @@index([status])
+  @@schema("crm")
+}
+model FinancialAttachment {
+  id String @id @default(cuid())
+
+  name String
+  url String
+  mimeType String
+  size Int
+
+  type String @default("COMPROVANTE")
+
+  createdAt DateTime @default(now())
+
+  financialId String
+
+  financial Financial @relation(fields: [financialId], references: [id], onDelete: Cascade)
+
+  @@index([financialId])
+  @@schema("crm")
+}

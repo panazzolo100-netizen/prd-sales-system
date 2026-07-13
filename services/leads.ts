@@ -1,15 +1,12 @@
-import { supabase } from "@/lib/supabase";
-import { Lead } from "@/types/lead";
+import { listCompanyLeads } from "@/services/leads.service";
 
-export async function getLeads(): Promise<Lead[]> {
-  const { data, error } = await supabase
-    .from("leads")
-    .select("*")
-    .order("created_at", { ascending: false });
+const TEMP_COMPANY_ID = "default-company";
 
-  if (error) {
-    throw new Error(error.message);
-  }
+export async function getLeads() {
+  const leads = await listCompanyLeads(TEMP_COMPANY_ID);
 
-  return data || [];
+  return leads.map((lead) => ({
+    ...lead,
+    engineering: lead.engineering ?? null,
+  }));
 }
