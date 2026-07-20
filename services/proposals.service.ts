@@ -1,5 +1,8 @@
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
+
 import {
   findProposalByLead,
+  findProposalsByCompany,
   upsertProposal,
   type UpdateProposalData,
 } from "@/repositories/proposals.repository";
@@ -8,10 +11,21 @@ import {
   findDimensioningByLead,
 } from "@/repositories/dimensioning.repository";
 
+export async function listCompanyProposals() {
+  const companyId =
+    await getCurrentCompanyId();
+
+  return findProposalsByCompany(
+    companyId
+  );
+}
+
 export async function getProposal(
   leadId: string
 ) {
-  return findProposalByLead(leadId);
+  return findProposalByLead(
+    leadId
+  );
 }
 
 export async function saveProposal(
@@ -34,7 +48,7 @@ export async function generateProposal(
 
   if (!dimensioning) {
     throw new Error(
-      "Dimensionamento não encontrado"
+      "Dimensionamento não encontrado."
     );
   }
 

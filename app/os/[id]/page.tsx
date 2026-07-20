@@ -7,6 +7,7 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { ServiceOrderPhotoGallery } from "@/components/os/ServiceOrderPhotoGallery";
 
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ChecklistItem } from "@/components/os/ChecklistItem";
@@ -285,12 +286,23 @@ export default async function ServiceOrderPage({
               </p>
             </div>
 
-            <Link
-              href="/os"
-              className="w-fit rounded-xl border border-zinc-700 px-5 py-3 font-semibold text-zinc-300 transition hover:border-orange-500 hover:text-white"
-            >
-              Voltar
-            </Link>
+            <div className="flex items-center gap-3">
+  <a
+    href={`/api/os/${ordem.id}/pdf`}
+    target="_blank"
+    rel="noreferrer"
+    className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600"
+  >
+    Gerar PDF
+  </a>
+
+  <Link
+    href="/os"
+    className="rounded-xl border border-zinc-700 px-5 py-3 font-bold text-white transition hover:border-zinc-600 hover:bg-zinc-800"
+  >
+    Voltar
+  </Link>
+</div>
           </div>
 
           <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -904,71 +916,9 @@ function PhotoGallery({
   photos: PhotoGalleryPhoto[];
 }) {
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-white">
-          {title}
-        </h3>
-
-        <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-semibold text-zinc-300">
-          {photos.length}{" "}
-          {photos.length === 1
-            ? "foto"
-            : "fotos"}
-        </span>
-      </div>
-
-      {photos.length > 0 ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {photos.map((photo) => (
-            <article
-              key={photo.id}
-              className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950"
-            >
-              <a
-                href={photo.url}
-                target="_blank"
-                rel="noreferrer"
-                className="block"
-              >
-                <img
-                  src={photo.url}
-                  alt={photo.name}
-                  className="h-52 w-full object-cover transition hover:scale-105"
-                />
-              </a>
-
-              <div className="p-4">
-                <p className="truncate font-semibold text-white">
-                  {photo.name}
-                </p>
-
-                <p className="mt-1 text-xs text-zinc-500">
-                  {new Intl.DateTimeFormat(
-                    "pt-BR",
-                    {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    }
-                  ).format(photo.createdAt)}
-                </p>
-
-                {photo.notes && (
-                  <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-400">
-                    {photo.notes}
-                  </p>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="mt-4 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/50 p-8 text-center">
-          <p className="text-zinc-500">
-            Nenhuma foto adicionada nesta etapa.
-          </p>
-        </div>
-      )}
-    </div>
+    <ServiceOrderPhotoGallery
+      title={title}
+      photos={photos}
+    />
   );
 }

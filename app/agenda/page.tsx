@@ -1,36 +1,23 @@
-import { AppLayout } from "@/components/layout/AppLayout";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+
+import { AppLayout } from "@/components/layout/AppLayout";
+import { listScheduledServiceOrders } from "@/services/agenda.service";
 
 function formatDate(value: Date | null) {
   if (!value) return "-";
 
-  return new Intl.DateTimeFormat("pt-BR").format(
-    value
-  );
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
+      dateStyle: "short",
+      timeStyle: "short",
+    }
+  ).format(value);
 }
 
 export default async function AgendaPage() {
   const ordens =
-    await prisma.serviceOrder.findMany({
-      where: {
-        scheduledDate: {
-          not: null,
-        },
-      },
-
-      include: {
-        project: {
-          include: {
-            client: true,
-          },
-        },
-      },
-
-      orderBy: {
-        scheduledDate: "asc",
-      },
-    });
+    await listScheduledServiceOrders();
 
   return (
     <AppLayout>
@@ -40,7 +27,7 @@ export default async function AgendaPage() {
         </h1>
 
         <p className="mt-2 text-zinc-400">
-          Instalações, visitas e execuções agendadas.
+          Instalações, visitas e atividades agendadas.
         </p>
       </div>
 
@@ -66,7 +53,9 @@ export default async function AgendaPage() {
               </div>
 
               <span className="rounded-full bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-500">
-                {formatDate(os.scheduledDate)}
+                {formatDate(
+                  os.scheduledDate
+                )}
               </span>
             </div>
 
@@ -79,13 +68,16 @@ export default async function AgendaPage() {
               <Info
                 label="Responsável"
                 value={
-                  os.responsible ?? "-"
+                  os.responsible ??
+                  "-"
                 }
               />
 
               <Info
                 label="Equipe"
-                value={os.team ?? "-"}
+                value={
+                  os.team ?? "-"
+                }
               />
 
               <Info
@@ -96,7 +88,7 @@ export default async function AgendaPage() {
 
             <Link
               href={`/os/${os.id}`}
-              className="mt-6 inline-flex rounded-xl bg-orange-500 px-5 py-3 font-bold text-white hover:bg-orange-600"
+              className="mt-6 inline-flex rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600"
             >
               Abrir Ordem de Serviço
             </Link>

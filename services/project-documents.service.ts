@@ -6,6 +6,7 @@ import {
   findProjectDocumentById,
   findProjectDocuments,
 } from "@/repositories/project-documents.repository";
+import { registerProjectEvent } from "@/services/project-timeline.service";
 
 export async function listProjectDocuments(
   projectId: string
@@ -22,7 +23,16 @@ export async function uploadProjectDocument(data: {
   type: ProjectDocumentType;
   notes?: string | null;
 }) {
-  return createProjectDocument(data);
+  const document = await createProjectDocument(data);
+
+  await registerProjectEvent({
+    projectId: data.projectId,
+    type: "DOCUMENT_UPLOADED",
+    title: "Documento enviado",
+    description: `${data.name} foi adicionado ao projeto.`,
+  });
+
+  return document;
 }
 
 export async function removeProjectDocument(
@@ -36,6 +46,13 @@ export async function removeProjectDocument(
   }
 
   await deleteProjectDocument(id);
+
+  await registerProjectEvent({
+    projectId: document.projectId,
+    type: "DOCUMENT_DELETED",
+    title: "Documento removido",
+    description: `${document.name} foi removido do projeto.`,
+  });
 
   return document;
 }

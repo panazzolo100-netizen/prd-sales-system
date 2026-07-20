@@ -9,6 +9,7 @@ import {
   findFinancialById,
   updateFinancialReceivedValue,
 } from "@/repositories/financial.repository";
+import { registerProjectEvent } from "@/services/project-timeline.service";
 
 const COMPANY_ID = "default-company";
 
@@ -92,6 +93,13 @@ export async function receiveFinancialInstallment(
     received,
     status
   );
+
+  await registerProjectEvent({
+    projectId: financial.projectId,
+    type: "FINANCIAL_UPDATED",
+    title: "Recebimento registrado",
+    description: `${installment.description ?? `Parcela ${installment.number}`} foi recebida.`,
+  });
 
   return {
     received,

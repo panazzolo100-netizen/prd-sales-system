@@ -1,7 +1,54 @@
 import { prisma } from "@/lib/prisma";
 
+export async function findServiceOrdersByCompany(
+  companyId: string
+) {
+  return prisma.serviceOrder.findMany({
+    where: {
+      companyId,
+    },
+
+    include: {
+      project: {
+        include: {
+          client: true,
+        },
+      },
+
+      photos: true,
+
+      timeline: true,
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
+export async function findAvailableProjectsForServiceOrder(
+  companyId: string
+) {
+  return prisma.project.findMany({
+    where: {
+      companyId,
+
+      serviceOrder: {
+        is: null,
+      },
+    },
+
+    include: {
+      client: true,
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
 export async function createServiceOrderRepository(data: {
-  number: string;
   title: string;
   status: string;
   responsible: string | null;
@@ -10,8 +57,39 @@ export async function createServiceOrderRepository(data: {
   companyId: string;
   projectId: string;
 }) {
-  return prisma.serviceOrder.create({
-    data,
+  return prisma.$transaction(async (tx) => {
+    const sequence =
+      await tx.serviceOrderSequence.upsert({
+        where: {
+          companyId: data.companyId,
+        },
+
+        create: {
+          companyId: data.companyId,
+          lastNumber: 1,
+        },
+
+        update: {
+          lastNumber: {
+            increment: 1,
+          },
+        },
+
+        select: {
+          lastNumber: true,
+        },
+      });
+
+    const number = `OS-${String(
+      sequence.lastNumber
+    ).padStart(6, "0")}`;
+
+    return tx.serviceOrder.create({
+      data: {
+        ...data,
+        number,
+      },
+    });
   });
 }
 
@@ -41,6 +119,10 @@ export async function findServiceOrderForUpdate(
       status: true,
       responsible: true,
       team: true,
+      scheduledDate: true,
+      services: true,
+      materials: true,
+      notes: true,
       startedDate: true,
       completedDate: true,
       projectId: true,
@@ -91,6 +173,35 @@ export async function findServiceOrderSignatures(
   });
 }
 
+export async function findServiceOrderForPdf(
+  id: string
+) {
+  return prisma.serviceOrder.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      project: {
+        include: {
+          client: true,
+        },
+      },
+
+      photos: {
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
+
+      timeline: {
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
+    },
+  });
+}
+
 export async function updateServiceOrderRepository(
   id: string,
   data: {
@@ -136,10 +247,6 @@ export async function updateServiceOrderChecklist(
       id,
     },
     data,
-    select: {
-      projectId: true,
-      status: true,
-    },
   });
 }
 

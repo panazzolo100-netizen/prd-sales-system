@@ -3,6 +3,7 @@ import {
   findFinancialById,
   updateFinancialRepository,
 } from "@/repositories/financial.repository";
+import { registerProjectEvent } from "@/services/project-timeline.service";
 
 export async function listCompanyFinancials(
   companyId: string
@@ -63,7 +64,12 @@ export async function updateFinancialData(data: {
         ? "PARCIAL"
         : data.status ?? "PENDENTE";
 
-  return updateFinancialRepository(
+  const currentFinancial = await getFinancialById(
+    data.id,
+    data.companyId
+  );
+
+  const updatedFinancial = await updateFinancialRepository(
     data.id,
     data.companyId,
     {
@@ -74,4 +80,22 @@ export async function updateFinancialData(data: {
       notes: data.notes?.trim() || null,
     }
   );
+
+  const changed =
+    currentFinancial.saleValue !== data.saleValue ||
+    currentFinancial.costValue !== data.costValue ||
+    currentFinancial.receivedValue !== data.receivedValue ||
+    currentFinancial.status !== status ||
+    currentFinancial.notes !== (data.notes?.trim() || null);
+
+  if (changed) {
+    await registerProjectEvent({
+      projectId: currentFinancial.projectId,
+      type: "FINANCIAL_UPDATED",
+      title: "Financeiro atualizado",
+      description: `Situação financeira atualizada para ${status}.`,
+    });
+  }
+
+  return updatedFinancial;
 }

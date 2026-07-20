@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCompanyLeadById } from "@/services/leads.service";
 
-const TEMP_COMPANY_ID = "default-company";
+import { getCompanyLeadById } from "@/services/leads.service";
 
 type Context = {
   params: Promise<{
@@ -10,21 +9,16 @@ type Context = {
 };
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: Context
 ) {
   try {
     const { id } = await context.params;
 
-    const lead = await getCompanyLeadById(
-      id,
-      TEMP_COMPANY_ID
-    );
+    const lead = await getCompanyLeadById(id);
 
     return NextResponse.json(lead);
-
   } catch (error) {
-
     console.error(
       "ERRO AO BUSCAR LEAD:",
       error

@@ -15,9 +15,12 @@ import {
   getFinancialSummary,
 } from "@/repositories/dashboard.repository";
 
-const COMPANY_ID = "default-company";
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
 export async function getDashboardData() {
+  const companyId =
+    await getCurrentCompanyId();
+
   const [
     totalLeads,
     totalClientes,
@@ -34,26 +37,28 @@ export async function getDashboardData() {
     documentos,
     financeiro,
   ] = await Promise.all([
-    countLeads(COMPANY_ID),
-    countClients(COMPANY_ID),
-    countWonLeads(COMPANY_ID),
-    countProposalLeads(COMPANY_ID),
-    countPipelineByStatus(COMPANY_ID),
-    countProjects(COMPANY_ID),
-    countProjectsInProgress(COMPANY_ID),
-    countCompletedProjects(COMPANY_ID),
-    countOpenServiceOrders(COMPANY_ID),
-    countServiceOrdersInProgress(COMPANY_ID),
-    countCompletedServiceOrders(COMPANY_ID),
-    countOverdueServiceOrders(COMPANY_ID),
-    countProjectDocuments(COMPANY_ID),
-    getFinancialSummary(COMPANY_ID),
+    countLeads(companyId),
+    countClients(companyId),
+    countWonLeads(companyId),
+    countProposalLeads(companyId),
+    countPipelineByStatus(companyId),
+    countProjects(companyId),
+    countProjectsInProgress(companyId),
+    countCompletedProjects(companyId),
+    countOpenServiceOrders(companyId),
+    countServiceOrdersInProgress(companyId),
+    countCompletedServiceOrders(companyId),
+    countOverdueServiceOrders(companyId),
+    countProjectDocuments(companyId),
+    getFinancialSummary(companyId),
   ]);
 
   const conversao =
     totalLeads === 0
       ? 0
-      : Math.round((ganhos / totalLeads) * 100);
+      : Math.round(
+          (ganhos / totalLeads) * 100
+        );
 
   const totalPendente =
     financeiro.saleValue -
@@ -97,10 +102,16 @@ export async function getDashboardData() {
 
     documentos,
 
-    totalVendido: financeiro.saleValue,
-    totalRecebido: financeiro.receivedValue,
+    totalVendido:
+      financeiro.saleValue,
+
+    totalRecebido:
+      financeiro.receivedValue,
+
     totalPendente,
-    totalCustos: financeiro.costValue,
+
+    totalCustos:
+      financeiro.costValue,
 
     margem,
     percentualRecebido,

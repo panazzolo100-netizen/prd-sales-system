@@ -1,84 +1,203 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import {
+  useEffect,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import type { LeadListItem } from "@/types/lead";
-import { LeadStatus } from "@/lib/generated/prisma/enums";
+
 import { LeadStageBar } from "@/components/leads/LeadStageBar";
-import { LeadTabs } from "@/components/leads/LeadTabs";
+import {
+  LeadTabs,
+  type LeadTab,
+} from "@/components/leads/LeadTabs";
+import { Drawer } from "@/components/ui/Drawer";
+import { LeadStatus } from "@/lib/generated/prisma/enums";
+import type { LeadListItem } from "@/types/lead";
 
 type Props = {
   lead: LeadListItem | null;
   open: boolean;
+  initialTab?: LeadTab;
   onClose: () => void;
+
+  onStatusChange?: (
+    leadId: string,
+    status: LeadStatus
+  ) => void;
 };
 
-export function LeadDetailsDrawer({ lead, open, onClose }: Props) {
+function formatCurrency(
+  value: number | null
+) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value ?? 0);
+}
+
+function getStatusLabel(
+  status: LeadStatus
+) {
+  switch (status) {
+    case LeadStatus.NOVO:
+      return "Novo";
+
+    case LeadStatus.CONTATO:
+      return "Contato";
+
+    case LeadStatus.VISITA:
+      return "Visita";
+
+    case LeadStatus.PROPOSTA:
+      return "Proposta";
+
+    case LeadStatus.NEGOCIACAO:
+      return "Negociação";
+
+    case LeadStatus.GANHO:
+      return "Ganho";
+
+    case LeadStatus.PERDIDO:
+      return "Perdido";
+
+    default:
+      return status;
+  }
+}
+
+export function LeadDetailsDrawer({
+  lead,
+  open,
+  initialTab = "Resumo",
+  onClose,
+  onStatusChange,
+}: Props) {
   const router = useRouter();
-  const [currentStatus, setCurrentStatus] = useState<LeadStatus | null>(null);
+
+  const [
+    currentStatus,
+    setCurrentStatus,
+  ] =
+    useState<LeadStatus | null>(
+      lead?.status ?? null
+    );
 
   useEffect(() => {
-    if (lead) setCurrentStatus(lead.status);
+    if (lead) {
+      setCurrentStatus(
+        lead.status
+      );
+    }
   }, [lead]);
 
-  if (!open || !lead || !currentStatus) return null;
+  if (!lead || !currentStatus) {
+    return null;
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
-      <div className="h-full w-full max-w-5xl overflow-y-auto border-l border-zinc-800 bg-zinc-950 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-8 py-6">
-          <div>
-            <h1 className="text-3xl font-bold text-white">{lead.companyName}</h1>
-            <p className="mt-1 text-zinc-400">{lead.contactName}</p>
-          </div>
+    <Drawer
+      open={open}
+      onClose={onClose}
+      eyebrow="Oportunidade comercial"
+      title={lead.companyName}
+      description={lead.contactName}
+      maxWidthClassName="max-w-5xl"
+    >
+      <LeadStageBar
+        leadId={lead.id}
+        currentStatus={currentStatus}
+        onStatusChange={(status) => {
+          setCurrentStatus(status);
 
-          <button type="button" onClick={onClose} className="rounded-lg p-2 transition hover:bg-zinc-800">
-            <X className="text-white" />
-          </button>
-        </div>
+          onStatusChange?.(
+            lead.id,
+            status
+          );
 
-        <LeadStageBar
-          leadId={lead.id}
-          currentStatus={currentStatus}
-          onStatusChange={(status) => {
-            setCurrentStatus(status);
-            router.refresh();
-          }}
+          router.refresh();
+        }}
+      />
+
+      <section className="grid gap-4 border-b border-white/[0.07] px-8 py-6 sm:grid-cols-2 xl:grid-cols-4">
+        <LeadSummaryCard
+          label="Status"
+          value={getStatusLabel(
+            currentStatus
+          )}
+          highlight
         />
 
-        <div className="grid grid-cols-4 gap-6 border-b border-zinc-800 px-8 py-6">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Status</p>
-            <h2 className="mt-2 text-lg font-semibold text-orange-500">{currentStatus}</h2>
-          </div>
+        <LeadSummaryCard
+          label="Telefone"
+          value={lead.phone ?? "-"}
+        />
 
-          <div>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Telefone</p>
-            <h2 className="mt-2 text-lg text-white">{lead.phone ?? "-"}</h2>
-          </div>
+        <LeadSummaryCard
+          label="Cidade"
+          value={
+            lead.city
+              ? `${lead.city}${
+                  lead.state
+                    ? ` - ${lead.state}`
+                    : ""
+                }`
+              : "-"
+          }
+        />
 
-          <div>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Cidade</p>
-            <h2 className="mt-2 text-lg text-white">
-              {lead.city ?? "-"}
-              {lead.state ? ` - ${lead.state}` : ""}
-            </h2>
-          </div>
+        <LeadSummaryCard
+          label="Valor estimado"
+          value={formatCurrency(
+            lead.estimatedValue
+          )}
+          highlight
+        />
+      </section>
 
-          <div>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Valor Estimado</p>
-            <h2 className="mt-2 text-2xl font-bold text-orange-500">
-              {new Intl.NumberFormat("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              }).format(lead.estimatedValue ?? 0)}
-            </h2>
-          </div>
-        </div>
+      <LeadTabs
+        lead={{
+          ...lead,
+          status: currentStatus,
+        }}
+        initialTab={initialTab}
+      />
+    </Drawer>
+  );
+}
 
-        <LeadTabs lead={lead} />
-      </div>
+type LeadSummaryCardProps = {
+  label: string;
+  value: string;
+  highlight?: boolean;
+};
+
+function LeadSummaryCard({
+  label,
+  value,
+  highlight = false,
+}: LeadSummaryCardProps) {
+  return (
+    <div
+      className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 ${
+        highlight
+          ? "border-orange-500/15 bg-orange-500/[0.05]"
+          : "border-white/[0.06] bg-zinc-900/70"
+      }`}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 truncate font-black ${
+          highlight
+            ? "text-xl text-orange-400"
+            : "text-lg text-white"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

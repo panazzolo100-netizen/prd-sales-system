@@ -3,11 +3,19 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, Plus } from "lucide-react";
-import type { LeadListItem } from "@/types/lead";
+
 import { LeadDimensioning } from "@/components/leads/LeadDimensioning";
+import type { LeadListItem } from "@/types/lead";
 
+export type LeadTab =
+  | "Resumo"
+  | "Timeline"
+  | "Propostas"
+  | "Engenharia"
+  | "Dimensionamento"
+  | "Arquivos";
 
-const tabs = [
+const tabs: LeadTab[] = [
   "Resumo",
   "Timeline",
   "Propostas",
@@ -16,10 +24,8 @@ const tabs = [
   "Arquivos",
 ];
 
-
 type Props = {
   lead: LeadListItem & {
-
     activities?: {
       id: string;
       type: string;
@@ -28,19 +34,19 @@ type Props = {
       createdAt: Date;
     }[];
 
-proposal?: {
-  id: string;
-  title: string;
-  amount: number;
-  status: string;
-  validUntil: Date | null;
-  createdAt: Date;
+    proposal?: {
+      id: string;
+      title: string;
+      amount: number;
+      status: string;
+      validUntil: Date | null;
+      createdAt: Date;
 
-  systemPower: number | null;
-  monthlySaving: number | null;
-  annualSaving: number | null;
-  payback: number | null;
-};
+      systemPower: number | null;
+      monthlySaving: number | null;
+      annualSaving: number | null;
+      payback: number | null;
+    };
 
     files?: {
       id: string;
@@ -49,155 +55,119 @@ proposal?: {
       size: number;
       createdAt: Date;
     }[];
-
   };
+
+  initialTab?: LeadTab;
 };
 
 
+export function LeadTabs({
+  lead,
+  initialTab = "Resumo",
+}: Props) {
+  const [active, setActive] =
+    useState<LeadTab>(initialTab);
 
-export function LeadTabs({ lead }: Props) {
-
-  const [active, setActive] = useState("Resumo");
-
+  useEffect(() => {
+    setActive(initialTab);
+  }, [initialTab, lead.id]);
 
   return (
-
     <>
-
-      <div className="flex border-b border-zinc-800">
-
-        {tabs.map((tab) => (
-
-          <button
-            key={tab}
-            onClick={() => setActive(tab)}
-            className={`border-b-2 px-5 py-4 text-sm font-semibold transition ${
-              active === tab
-                ? "border-orange-500 text-orange-500"
-                : "border-transparent text-zinc-400 hover:text-white"
-            }`}
-          >
-
-            {tab}
-
-          </button>
-
-        ))}
-
+      <div className="overflow-x-auto border-b border-zinc-800">
+        <div className="flex min-w-max">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActive(tab)}
+              className={`border-b-2 px-5 py-4 text-sm font-semibold transition ${
+                active === tab
+                  ? "border-orange-500 text-orange-500"
+                  : "border-transparent text-zinc-400 hover:text-white"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
-
-
       <div className="p-6">
-
-
         {active === "Resumo" && (
-
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-
             <h2 className="text-xl font-bold text-white">
               Dados do Lead
             </h2>
 
-
-            <div className="mt-5 grid grid-cols-2 gap-5">
-
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
               <Info
                 label="Empresa"
                 value={lead.companyName}
               />
-
 
               <Info
                 label="Contato"
                 value={lead.contactName}
               />
 
-
               <Info
                 label="Telefone"
                 value={lead.phone ?? "-"}
               />
 
-
               <Info
                 label="Cidade"
-                value={`${lead.city ?? "-"} ${lead.state ?? ""}`}
+                value={`${lead.city ?? "-"} ${
+                  lead.state ?? ""
+                }`}
               />
-
 
               <Info
                 label="Consumo"
-                value={`${lead.consumptionKwh ?? 0} kWh`}
+                value={`${
+                  lead.consumptionKwh ?? 0
+                } kWh`}
               />
-
 
               <Info
                 label="Valor estimado"
-                value={
-                  new Intl.NumberFormat(
-                    "pt-BR",
-                    {
-                      style:"currency",
-                      currency:"BRL",
-                    }
-                  ).format(
-                    lead.estimatedValue ?? 0
-                  )
-                }
+                value={new Intl.NumberFormat(
+                  "pt-BR",
+                  {
+                    style: "currency",
+                    currency: "BRL",
+                  }
+                ).format(
+                  lead.estimatedValue ?? 0
+                )}
               />
-
-
             </div>
-
           </div>
-
         )}
-
-
 
         {active === "Timeline" && (
-
           <LeadTimeline lead={lead} />
-
         )}
-
-
 
         {active === "Propostas" && (
-
           <LeadProposals lead={lead} />
-
         )}
-
-
 
         {active === "Engenharia" && (
-
           <LeadEngineering lead={lead} />
-
         )}
-        
+
         {active === "Dimensionamento" && (
-  <LeadDimensioning lead={lead} />
-)}
-
-
+          <LeadDimensioning lead={lead} />
+        )}
 
         {active === "Arquivos" && (
-
           <LeadFiles lead={lead} />
-
         )}
-
-
       </div>
-
-
     </>
-
   );
-
 }
 
 

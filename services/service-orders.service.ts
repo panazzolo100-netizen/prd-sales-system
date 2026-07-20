@@ -1,10 +1,13 @@
 import {
   completeServiceOrderProject,
   createServiceOrderRepository,
+  findAvailableProjectsForServiceOrder,
   findProjectForServiceOrder,
   findServiceOrderChecklist,
+  findServiceOrderForPdf,
   findServiceOrderForUpdate,
   findServiceOrderSignatures,
+  findServiceOrdersByCompany,
   updateServiceOrderChecklist,
   updateServiceOrderRepository,
   updateServiceOrderSignatures,
@@ -25,6 +28,20 @@ type ChecklistData = {
   checklistCustomerTraining: boolean;
   checklistDelivered: boolean;
 };
+
+export async function listServiceOrders(
+  companyId: string
+) {
+  return findServiceOrdersByCompany(companyId);
+}
+
+export async function listAvailableProjectsForServiceOrder(
+  companyId: string
+) {
+  return findAvailableProjectsForServiceOrder(
+    companyId
+  );
+}
 
 export async function createServiceOrderData(data: {
   projectId: string;
@@ -49,16 +66,20 @@ export async function createServiceOrderData(data: {
     );
   }
 
-  const scheduledDate = data.scheduledDate ?? null;
+  const scheduledDate =
+    data.scheduledDate ?? null;
 
   const serviceOrder =
     await createServiceOrderRepository({
-      number: `OS-${Date.now()}`,
       title: data.title.trim(),
-      status: scheduledDate ? "AGENDADA" : "ABERTA",
-      responsible: data.responsible?.trim() || null,
+      status: scheduledDate
+        ? "AGENDADA"
+        : "ABERTA",
+      responsible:
+        data.responsible?.trim() || null,
       scheduledDate,
-      services: data.services?.trim() || null,
+      services:
+        data.services?.trim() || null,
       companyId: data.companyId,
       projectId: data.projectId,
     });
@@ -83,9 +104,8 @@ export async function updateServiceOrderData(data: {
   materials?: string | null;
   notes?: string | null;
 }) {
-  const current = await findServiceOrderForUpdate(
-    data.id
-  );
+  const current =
+    await findServiceOrderForUpdate(data.id);
 
   if (!current) {
     throw new Error(
@@ -98,6 +118,11 @@ export async function updateServiceOrderData(data: {
 
   const team = data.team?.trim() || null;
 
+  const scheduledDate = data.scheduledDate ?? null;
+  const services = data.services?.trim() || null;
+  const materials = data.materials?.trim() || null;
+  const notes = data.notes?.trim() || null;
+
   const updated =
     await updateServiceOrderRepository(
       data.id,
@@ -105,14 +130,10 @@ export async function updateServiceOrderData(data: {
         status: data.status,
         responsible,
         team,
-        scheduledDate:
-          data.scheduledDate ?? null,
-        services:
-          data.services?.trim() || null,
-        materials:
-          data.materials?.trim() || null,
-        notes:
-          data.notes?.trim() || null,
+        scheduledDate,
+        services,
+        materials,
+        notes,
         startedDate:
           data.status === "EM_ANDAMENTO" &&
           !current.startedDate
@@ -120,7 +141,8 @@ export async function updateServiceOrderData(data: {
             : current.startedDate,
         completedDate:
           data.status === "CONCLUIDA"
-            ? current.completedDate ?? new Date()
+            ? current.completedDate ??
+              new Date()
             : null,
       }
     );
@@ -134,13 +156,16 @@ export async function updateServiceOrderData(data: {
     });
   }
 
-  if (current.responsible !== responsible) {
+  if (
+    current.responsible !== responsible
+  ) {
     await registerServiceOrderEvent({
       serviceOrderId: data.id,
       type: "RESPONSAVEL_ALTERADO",
       title: "Responsável alterado",
       description:
-        responsible ?? "Responsável removido",
+        responsible ??
+        "Responsável removido",
     });
   }
 
@@ -149,7 +174,24 @@ export async function updateServiceOrderData(data: {
       serviceOrderId: data.id,
       type: "EQUIPE_ALTERADA",
       title: "Equipe alterada",
-      description: team ?? "Equipe removida",
+      description:
+        team ?? "Equipe removida",
+    });
+  }
+
+  const operationalDataChanged =
+    current.scheduledDate?.getTime() !== scheduledDate?.getTime() ||
+    current.services !== services ||
+    current.materials !== materials ||
+    current.notes !== notes;
+
+  if (operationalDataChanged) {
+    await registerServiceOrderEvent({
+      serviceOrderId: data.id,
+      type: "OS_ATUALIZADA",
+      title: "Ordem de Serviço atualizada",
+      description:
+        "Agenda ou informações operacionais da ordem foram atualizadas.",
     });
   }
 
@@ -164,8 +206,10 @@ export async function updateServiceOrderData(data: {
     await registerServiceOrderEvent({
       serviceOrderId: data.id,
       type: "OS_CONCLUIDA",
-      title: "Ordem de Serviço concluída",
-      description: "A execução foi finalizada.",
+      title:
+        "Ordem de Serviço concluída",
+      description:
+        "A execução foi finalizada.",
     });
 
     await registerServiceOrderEvent({
@@ -207,15 +251,16 @@ export async function updateServiceOrderChecklistData(
         : undefined,
     });
 
-  const changedItems = Object.entries(
-    checklist
-  ).filter(([key, value]) => {
-    return (
-      current[
-        key as keyof ChecklistData
-      ] !== value
+  const changedItems =
+    Object.entries(checklist).filter(
+      ([key, value]) => {
+        return (
+          current[
+            key as keyof ChecklistData
+          ] !== value
+        );
+      }
     );
-  });
 
   if (changedItems.length > 0) {
     await registerServiceOrderEvent({
@@ -237,7 +282,8 @@ export async function updateServiceOrderChecklistData(
     await registerServiceOrderEvent({
       serviceOrderId: id,
       type: "OS_CONCLUIDA",
-      title: "Ordem de Serviço concluída",
+      title:
+        "Ordem de Serviço concluída",
       description:
         "Todas as etapas do checklist foram concluídas.",
     });
@@ -265,7 +311,9 @@ export async function updateServiceOrderSignaturesData(
   }
 ) {
   const current =
-    await findServiceOrderSignatures(data.id);
+    await findServiceOrderSignatures(
+      data.id
+    );
 
   if (!current) {
     throw new Error(
@@ -302,7 +350,8 @@ export async function updateServiceOrderSignaturesData(
         technicianName,
         technicianSignature,
         signedAt: hasSignature
-          ? current.signedAt ?? new Date()
+          ? current.signedAt ??
+            new Date()
           : null,
       }
     );
@@ -338,4 +387,94 @@ export async function updateServiceOrderSignaturesData(
   }
 
   return updated;
+}
+
+export async function getServiceOrderPdfData(
+  id: string
+) {
+  const serviceOrder =
+    await findServiceOrderForPdf(id);
+
+  if (!serviceOrder) {
+    throw new Error(
+      "Ordem de Serviço não encontrada."
+    );
+  }
+
+  return serviceOrder;
+}
+
+export async function getPublicServiceOrderValidationData(
+  id: string
+) {
+  const serviceOrder =
+    await findServiceOrderForPdf(id);
+
+  if (!serviceOrder) {
+    return null;
+  }
+
+  return {
+    id: serviceOrder.id,
+    number: serviceOrder.number,
+    title: serviceOrder.title,
+    status: serviceOrder.status,
+    responsible:
+      serviceOrder.responsible,
+    scheduledDate:
+      serviceOrder.scheduledDate,
+    completedDate:
+      serviceOrder.completedDate,
+    services: serviceOrder.services,
+
+    checklistArt:
+      serviceOrder.checklistArt,
+    checklistProjectApproved:
+      serviceOrder
+        .checklistProjectApproved,
+    checklistMaterialsSeparated:
+      serviceOrder
+        .checklistMaterialsSeparated,
+    checklistStructureInstalled:
+      serviceOrder
+        .checklistStructureInstalled,
+    checklistModulesInstalled:
+      serviceOrder
+        .checklistModulesInstalled,
+    checklistInverterInstalled:
+      serviceOrder
+        .checklistInverterInstalled,
+    checklistDcCabling:
+      serviceOrder.checklistDcCabling,
+    checklistAcCabling:
+      serviceOrder.checklistAcCabling,
+    checklistCommissioning:
+      serviceOrder
+        .checklistCommissioning,
+    checklistCustomerTraining:
+      serviceOrder
+        .checklistCustomerTraining,
+    checklistDelivered:
+      serviceOrder.checklistDelivered,
+
+    customerSignature:
+      serviceOrder.customerSignature,
+    technicianSignature:
+      serviceOrder.technicianSignature,
+    signedAt: serviceOrder.signedAt,
+
+    photosCount:
+      serviceOrder.photos.length,
+
+    project: {
+      title:
+        serviceOrder.project.title,
+
+      client: {
+        name:
+          serviceOrder.project.client
+            .name,
+      },
+    },
+  };
 }

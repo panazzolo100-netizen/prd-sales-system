@@ -1,40 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bolt, MapPin, Phone, Plus, Search } from "lucide-react";
+
 import type { LeadListItem } from "@/types/lead";
-import { NewLeadDrawer } from "@/components/leads/NewLeadDrawer";
+
 import { LeadDetailsDrawer } from "@/components/leads/LeadDetailsDrawer";
+import { LeadsFilters } from "@/components/leads/LeadsFilters";
+import { LeadsGrid } from "@/components/leads/LeadsGrid";
+import { LeadsHeader } from "@/components/leads/LeadsHeader";
+import { NewLeadDrawer } from "@/components/leads/NewLeadDrawer";
 
 type LeadsClientProps = {
   leads: LeadListItem[];
 };
-
-function formatCurrency(value: number | null) {
-  if (!value) return "R$ 0,00";
-
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-}
-
-function formatConsumption(value: number | null) {
-  if (!value) return "Não informado";
-
-  return `${value.toLocaleString("pt-BR")} kWh`;
-}
-
-function formatLocation(
-  city: string | null,
-  state: string | null
-) {
-  if (!city && !state) return "Local não informado";
-  if (city && state) return `${city} - ${state}`;
-
-  return city ?? state ?? "Local não informado";
-}
 
 export function LeadsClient({
   leads,
@@ -50,6 +29,39 @@ export function LeadsClient({
   const [loadingLead, setLoadingLead] =
     useState(false);
 
+  const [search, setSearch] =
+    useState("");
+
+  const [status, setStatus] =
+    useState("");
+
+  const filteredLeads = useMemo(() => {
+    const normalizedSearch = search
+      .trim()
+      .toLowerCase();
+
+    return leads.filter((lead) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        lead.companyName
+          .toLowerCase()
+          .includes(normalizedSearch) ||
+        lead.contactName
+          .toLowerCase()
+          .includes(normalizedSearch) ||
+        lead.city
+          ?.toLowerCase()
+          .includes(normalizedSearch) ||
+        lead.phone
+          ?.toLowerCase()
+          .includes(normalizedSearch);
+
+      const matchesStatus =
+        !status || lead.status === status;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [leads, search, status]);
 
   async function openLead(id: string) {
     setLoadingLead(true);
@@ -70,26 +82,25 @@ export function LeadsClient({
       const lead = await response.json();
 
       setSelectedLead(lead);
-
     } finally {
       setLoadingLead(false);
     }
   }
 
+  function handleLeadCreated() {
+    setNewDrawerOpen(false);
+    router.refresh();
+  }
 
   return (
-    <div className="space-y-8">
-
+    <div className="space-y-6">
       <NewLeadDrawer
         open={newDrawerOpen}
         onClose={() =>
           setNewDrawerOpen(false)
         }
-        onCreated={() =>
-          router.refresh()
-        }
+        onCreated={handleLeadCreated}
       />
-
 
       <LeadDetailsDrawer
         lead={selectedLead}
@@ -99,178 +110,57 @@ export function LeadsClient({
         }
       />
 
+      <LeadsHeader
+        totalLeads={leads.length}
+        onNewLead={() =>
+          setNewDrawerOpen(true)
+        }
+      />
+
+      <LeadsFilters
+        search={search}
+        onSearchChange={setSearch}
+        status={status}
+        onStatusChange={setStatus}
+      />
+
+      {loadingLead && (
+        <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 text-sm font-semibold text-orange-400">
+          Carregando oportunidade...
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
+        <p className="text-sm text-zinc-500">
+          Mostrando{" "}
+          <strong className="text-white">
+            {filteredLeads.length}
+          </strong>{" "}
+          de{" "}
+          <strong className="text-white">
+            {leads.length}
+          </strong>{" "}
+          oportunidade(s)
+        </p>
 
-        <div>
-          <h1 className="text-4xl font-bold text-white">
-            Oportunidades
-          </h1>
-
-          <p className="mt-2 text-zinc-400">
-            Gerencie todo o funil comercial da PRD.
-          </p>
-        </div>
-
-
-        <button
-          onClick={() =>
-            setNewDrawerOpen(true)
-          }
-          className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 font-semibold text-white hover:bg-orange-600"
-        >
-          <Plus size={18} />
-
-          Novo Lead
-        </button>
-
-      </div>
-
-
-      <div className="flex gap-4">
-
-        <div className="flex flex-1 items-center rounded-xl border border-zinc-800 bg-zinc-900 px-4">
-
-          <Search
-            size={18}
-            className="text-zinc-500"
-          />
-
-          <input
-            type="text"
-            placeholder="Pesquisar empresa..."
-            className="w-full bg-transparent p-3 text-white outline-none"
-          />
-
-        </div>
-
-
-        <select className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 text-white">
-
-          <option>
-            Todos
-          </option>
-
-          <option>
-            Novo
-          </option>
-
-          <option>
-            Contato
-          </option>
-
-          <option>
-            Proposta
-          </option>
-
-          <option>
-            Ganho
-          </option>
-
-          <option>
-            Perdido
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div className="grid gap-5 xl:grid-cols-3">
-
-        {leads.map((lead) => (
-
-          <div
-            key={lead.id}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 transition hover:border-orange-500"
+        {(search || status) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setStatus("");
+            }}
+            className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
           >
-
-            <div className="flex items-start justify-between">
-
-              <h2 className="text-xl font-bold text-white">
-                {lead.companyName}
-              </h2>
-
-
-              <span className="rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white">
-                {lead.status}
-              </span>
-
-            </div>
-
-
-            <p className="mt-2 text-zinc-400">
-              {lead.contactName}
-            </p>
-
-
-            <div className="mt-6 space-y-3">
-
-              <div className="flex items-center gap-3 text-zinc-300">
-                <Phone size={16} />
-                {lead.phone ?? "Sem telefone"}
-              </div>
-
-
-              <div className="flex items-center gap-3 text-zinc-300">
-                <MapPin size={16} />
-                {formatLocation(
-                  lead.city,
-                  lead.state
-                )}
-              </div>
-
-
-              <div className="flex items-center gap-3 text-zinc-300">
-                <Bolt size={16} />
-                {formatConsumption(
-                  lead.consumptionKwh
-                )}
-              </div>
-
-            </div>
-
-
-            <div className="mt-6 flex items-center justify-between border-t border-zinc-800 pt-5">
-
-              <div>
-
-                <p className="text-sm text-zinc-500">
-                  Valor estimado
-                </p>
-
-
-                <h3 className="text-2xl font-bold text-orange-500">
-
-                  {formatCurrency(
-                    lead.estimatedValue
-                  )}
-
-                </h3>
-
-              </div>
-
-
-              <button
-                onClick={() =>
-                  openLead(lead.id)
-                }
-                disabled={loadingLead}
-                className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white hover:bg-orange-600 disabled:opacity-60"
-              >
-                {loadingLead
-                  ? "Abrindo..."
-                  : "Abrir"}
-              </button>
-
-            </div>
-
-          </div>
-
-        ))}
-
+            Limpar filtros
+          </button>
+        )}
       </div>
 
+      <LeadsGrid
+        leads={filteredLeads}
+        onOpenLead={openLead}
+      />
     </div>
   );
 }

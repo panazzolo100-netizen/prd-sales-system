@@ -14,8 +14,8 @@ import {
 } from "@/services/financial.service";
 import { FinancialUpload } from "@/components/financial/FinancialUpload";
 import { FinancialAttachments } from "@/components/financial/FinancialAttachments";
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
-const COMPANY_ID = "default-company";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -81,6 +81,9 @@ async function updateFinancial(
 ) {
   "use server";
 
+  const companyId =
+  await getCurrentCompanyId();
+
   const id = String(
     formData.get("id") ?? ""
   ).trim();
@@ -144,7 +147,7 @@ async function updateFinancial(
 
   await updateFinancialData({
     id,
-    companyId: COMPANY_ID,
+    companyId,
     saleValue,
     costValue,
     receivedValue,
@@ -188,11 +191,13 @@ async function generateFinancialInstallments(
 }
 
 export default async function FinanceiroPage() {
+
+  const companyId =
+  await getCurrentCompanyId();
   const financeiros =
     await listCompanyFinancials(
-      COMPANY_ID
-    );
-
+  companyId
+);
   const totalVendido = financeiros.reduce(
     (total, item) =>
       total + item.saleValue,

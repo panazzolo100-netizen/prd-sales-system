@@ -5,11 +5,86 @@ import {
   saveProposal,
 } from "@/services/proposals.service";
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
+function hasField(
+  body: Record<string, unknown>,
+  field: string
+) {
+  return Object.prototype.hasOwnProperty.call(
+    body,
+    field
+  );
+}
 
-    const leadId = searchParams.get("leadId");
+function nullableString(
+  value: unknown
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return null;
+  }
+
+  const text = String(value).trim();
+
+  return text.length > 0
+    ? text
+    : null;
+}
+
+function nullableNumber(
+  value: unknown
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : null;
+}
+
+function nullableDate(
+  value: unknown
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const date = new Date(
+    String(value)
+  );
+
+  if (
+    Number.isNaN(date.getTime())
+  ) {
+    throw new Error(
+      "Data de validade inválida."
+    );
+  }
+
+  return date;
+}
+
+export async function GET(
+  request: Request
+) {
+  try {
+    const { searchParams } =
+      new URL(request.url);
+
+    const leadId =
+      searchParams.get("leadId");
 
     if (!leadId) {
       return NextResponse.json(
@@ -22,16 +97,13 @@ export async function GET(request: Request) {
       );
     }
 
-    const proposal = await getProposal(
-      leadId
-    );
+    const proposal =
+      await getProposal(leadId);
 
     return NextResponse.json(
       proposal
     );
-
   } catch (error) {
-
     console.error(
       "ERRO AO BUSCAR PROPOSTA:",
       error
@@ -39,7 +111,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       {
-        error: "Erro ao buscar proposta.",
+        error:
+          "Erro ao buscar proposta.",
       },
       {
         status: 500,
@@ -48,14 +121,22 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request
+) {
   try {
-
     const body =
-      await request.json();
+      (await request.json()) as Record<
+        string,
+        unknown
+      >;
 
-    if (!body.leadId) {
+    const leadId =
+      typeof body.leadId === "string"
+        ? body.leadId
+        : "";
 
+    if (!leadId) {
       return NextResponse.json(
         {
           error: "Lead obrigatório.",
@@ -64,40 +145,133 @@ export async function POST(request: Request) {
           status: 400,
         }
       );
-
     }
 
     const proposal =
       await saveProposal(
-        body.leadId,
+        leadId,
         {
-          title:
-            body.title ??
-            "Proposta Solar",
+          ...(hasField(body, "title")
+            ? {
+                title:
+                  nullableString(
+                    body.title
+                  ) ??
+                  "Proposta Solar",
+              }
+            : {}),
 
-          amount:
-            Number(body.amount ?? 0),
+          ...(hasField(body, "amount")
+            ? {
+                amount:
+                  nullableNumber(
+                    body.amount
+                  ) ?? 0,
+              }
+            : {}),
 
-          status:
-            body.status ??
-            "RASCUNHO",
+          ...(hasField(body, "status")
+            ? {
+                status:
+                  nullableString(
+                    body.status
+                  ) ??
+                  "RASCUNHO",
+              }
+            : {}),
 
-          validUntil:
-            body.validUntil
-              ? new Date(body.validUntil)
-              : null,
+          ...(hasField(
+            body,
+            "validUntil"
+          )
+            ? {
+                validUntil:
+                  nullableDate(
+                    body.validUntil
+                  ),
+              }
+            : {}),
 
-          systemPower:
-            body.systemPower,
+          ...(hasField(
+            body,
+            "paymentTerms"
+          )
+            ? {
+                paymentTerms:
+                  nullableString(
+                    body.paymentTerms
+                  ),
+              }
+            : {}),
 
-          monthlySaving:
-            body.monthlySaving,
+          ...(hasField(
+            body,
+            "executionDeadline"
+          )
+            ? {
+                executionDeadline:
+                  nullableString(
+                    body.executionDeadline
+                  ),
+              }
+            : {}),
 
-          annualSaving:
-            body.annualSaving,
+          ...(hasField(
+            body,
+            "commercialNotes"
+          )
+            ? {
+                commercialNotes:
+                  nullableString(
+                    body.commercialNotes
+                  ),
+              }
+            : {}),
 
-          payback:
-            body.payback,
+          ...(hasField(
+            body,
+            "systemPower"
+          )
+            ? {
+                systemPower:
+                  nullableNumber(
+                    body.systemPower
+                  ),
+              }
+            : {}),
+
+          ...(hasField(
+            body,
+            "monthlySaving"
+          )
+            ? {
+                monthlySaving:
+                  nullableNumber(
+                    body.monthlySaving
+                  ),
+              }
+            : {}),
+
+          ...(hasField(
+            body,
+            "annualSaving"
+          )
+            ? {
+                annualSaving:
+                  nullableNumber(
+                    body.annualSaving
+                  ),
+              }
+            : {}),
+
+          ...(hasField(body, "payback")
+            ? {
+                payback:
+                  nullableNumber(
+                    body.payback
+                  ),
+              }
+            : {}),
         }
       );
 
@@ -107,18 +281,20 @@ export async function POST(request: Request) {
         status: 200,
       }
     );
-
   } catch (error) {
-
     console.error(
       "ERRO AO SALVAR PROPOSTA:",
       error
     );
 
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Erro ao salvar proposta.";
+
     return NextResponse.json(
       {
-        error:
-          "Erro ao salvar proposta.",
+        error: message,
       },
       {
         status: 500,

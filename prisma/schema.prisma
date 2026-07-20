@@ -36,6 +36,7 @@ enum ServiceOrderPhotoCategory {
 
   @@schema("crm")
 }
+
 enum ProjectDocumentType {
   CONTRATO
   ART
@@ -324,15 +325,13 @@ model Client {
 model Proposal {
   id String @id @default(cuid())
 
-  title String
-
+  title  String
   amount Float
 
   systemPower Float?
 
   monthlySaving Float?
-
-  annualSaving Float?
+  annualSaving  Float?
 
   payback Float?
 
@@ -340,17 +339,18 @@ model Proposal {
 
   validUntil DateTime?
 
-  createdAt DateTime @default(now())
+  paymentTerms      String?
+  executionDeadline String?
+  commercialNotes   String?
 
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   leadId String? @unique
-
-  lead Lead? @relation(fields: [leadId], references: [id])
+  lead   Lead?   @relation(fields: [leadId], references: [id])
 
   clientId String?
-
-  client Client? @relation(fields: [clientId], references: [id])
+  client   Client? @relation(fields: [clientId], references: [id])
 
   @@schema("crm")
 }
@@ -361,6 +361,8 @@ model Project {
   serviceOrder ServiceOrder?
 
   documents ProjectDocument[]
+
+  timeline ProjectTimeline[]
 
   title String
 
@@ -382,6 +384,26 @@ model Project {
 
   client Client @relation(fields: [clientId], references: [id])
 
+  @@schema("crm")
+}
+
+model ProjectTimeline {
+  id String @id @default(cuid())
+
+  type String
+
+  title String
+
+  description String?
+
+  createdAt DateTime @default(now())
+
+  projectId String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, createdAt])
   @@schema("crm")
 }
 
@@ -495,6 +517,18 @@ model ServiceOrder {
   @@schema("crm")
 }
 
+model ServiceOrderSequence {
+  id String @id @default(cuid())
+
+  companyId  String @unique
+  lastNumber Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@schema("crm")
+}
+
 model ServiceOrderPhoto {
   id String @id @default(cuid())
 
@@ -517,11 +551,12 @@ model ServiceOrderPhoto {
   @@index([serviceOrderId, category])
   @@schema("crm")
 }
+
 model ServiceOrderTimeline {
   id String @id @default(cuid())
 
-  type String
-  title String
+  type        String
+  title       String
   description String?
 
   createdAt DateTime @default(now())
@@ -533,6 +568,7 @@ model ServiceOrderTimeline {
   @@index([serviceOrderId])
   @@schema("crm")
 }
+
 model ProjectDocument {
   id String @id @default(cuid())
 
@@ -556,6 +592,7 @@ model ProjectDocument {
   @@index([projectId, type])
   @@schema("crm")
 }
+
 model CashFlow {
   id String @id @default(cuid())
 
@@ -588,11 +625,10 @@ model CashFlow {
   financial Financial? @relation(fields: [financialId], references: [id])
 
   @@index([companyId])
-
   @@index([status])
-
   @@schema("crm")
 }
+
 model FinancialInstallment {
   id String @id @default(cuid())
 
@@ -623,13 +659,14 @@ model FinancialInstallment {
   @@index([status])
   @@schema("crm")
 }
+
 model FinancialAttachment {
   id String @id @default(cuid())
 
-  name String
-  url String
+  name     String
+  url      String
   mimeType String
-  size Int
+  size     Int
 
   type String @default("COMPROVANTE")
 

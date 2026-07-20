@@ -1,4 +1,5 @@
 import { LeadStatus } from "@/lib/generated/prisma/enums";
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
 import {
   createClientFromLead,
@@ -14,16 +15,19 @@ import {
   type UpdateLeadData,
 } from "@/repositories/leads.repository";
 
-export async function listCompanyLeads(
-  companyId: string
-) {
+export async function listCompanyLeads() {
+  const companyId =
+    await getCurrentCompanyId();
+
   return findLeadsByCompany(companyId);
 }
 
 export async function getCompanyLeadById(
-  id: string,
-  companyId: string
+  id: string
 ) {
+  const companyId =
+    await getCurrentCompanyId();
+
   const lead = await findLeadById(
     id,
     companyId
@@ -37,11 +41,16 @@ export async function getCompanyLeadById(
 }
 
 export async function createCompanyLead(
-  data: CreateLeadData
+  data: Omit<CreateLeadData, "companyId">
 ) {
+  const companyId =
+    await getCurrentCompanyId();
+
   const lead = await createLead({
     ...data,
-    status: data.status ?? LeadStatus.NOVO,
+    companyId,
+    status:
+      data.status ?? LeadStatus.NOVO,
   });
 
   await createLeadActivity({
@@ -56,14 +65,19 @@ export async function createCompanyLead(
 
 export async function updateCompanyLead(
   id: string,
-  companyId: string,
   data: UpdateLeadData
 ) {
-  const currentLead =
-    await getCompanyLeadById(
-      id,
-      companyId
-    );
+  const companyId =
+    await getCurrentCompanyId();
+
+  const currentLead = await findLeadById(
+    id,
+    companyId
+  );
+
+  if (!currentLead) {
+    throw new Error("Lead não encontrado.");
+  }
 
   const lead = await updateLead(
     id,
@@ -85,7 +99,10 @@ export async function updateCompanyLead(
     });
   }
 
-  if (data.status === LeadStatus.GANHO) {
+  if (
+    data.status === LeadStatus.GANHO &&
+    currentLead.status !== LeadStatus.GANHO
+  ) {
     await createClientFromLead(
       id,
       companyId
@@ -130,13 +147,19 @@ export async function updateCompanyLead(
 }
 
 export async function deleteCompanyLead(
-  id: string,
-  companyId: string
+  id: string
 ) {
-  await getCompanyLeadById(
+  const companyId =
+    await getCurrentCompanyId();
+
+  const lead = await findLeadById(
     id,
     companyId
   );
+
+  if (!lead) {
+    throw new Error("Lead não encontrado.");
+  }
 
   return deleteLead(
     id,
@@ -145,13 +168,19 @@ export async function deleteCompanyLead(
 }
 
 export async function convertLeadToClient(
-  id: string,
-  companyId: string
+  id: string
 ) {
-  const lead = await getCompanyLeadById(
+  const companyId =
+    await getCurrentCompanyId();
+
+  const lead = await findLeadById(
     id,
     companyId
   );
+
+  if (!lead) {
+    throw new Error("Lead não encontrado.");
+  }
 
   if (lead.status !== LeadStatus.GANHO) {
     throw new Error(

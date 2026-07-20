@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { AppLayout } from "@/components/layout/AppLayout";
 
-const COMPANY_ID = "default-company";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { prisma } from "@/lib/prisma";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR").format(date);
@@ -35,6 +35,8 @@ function statusLabel(status: string) {
 async function createProject(formData: FormData) {
   "use server";
 
+  const companyId = await getCurrentCompanyId();
+
   const title = String(
     formData.get("title") ?? ""
   ).trim();
@@ -63,7 +65,7 @@ async function createProject(formData: FormData) {
     await prisma.client.findFirst({
       where: {
         id: clientId,
-        companyId: COMPANY_ID,
+        companyId,
       },
     });
 
@@ -80,7 +82,7 @@ async function createProject(formData: FormData) {
         status: "NOVO",
         description:
           description || null,
-        companyId: COMPANY_ID,
+        companyId,
         clientId,
       },
     });
@@ -91,13 +93,14 @@ async function createProject(formData: FormData) {
       costValue: 0,
       receivedValue: 0,
       status: "PENDENTE",
-      companyId: COMPANY_ID,
+      companyId,
       projectId: project.id,
     },
   });
 
   revalidatePath("/engenharia");
   revalidatePath("/financeiro");
+  revalidatePath("/");
 
   redirect(
     `/engenharia/${project.id}`
@@ -105,11 +108,14 @@ async function createProject(formData: FormData) {
 }
 
 export default async function Engenharia() {
+  const companyId =
+    await getCurrentCompanyId();
+
   const [projetos, clientes] =
     await Promise.all([
       prisma.project.findMany({
         where: {
-          companyId: COMPANY_ID,
+          companyId,
         },
 
         include: {
@@ -131,7 +137,7 @@ export default async function Engenharia() {
 
       prisma.client.findMany({
         where: {
-          companyId: COMPANY_ID,
+          companyId,
         },
 
         orderBy: {

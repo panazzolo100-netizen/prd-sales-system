@@ -1,13 +1,16 @@
-import { AppLayout } from "../../components/AppLayout";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { ProposalsClient } from "@/components/proposals/ProposalsClient";
+import { listCompanyProposals } from "@/services/proposals.service";
 
-export default function Propostas() {
+export default async function PropostasPage() {
+  const proposals =
+    await listCompanyProposals();
+
   return (
     <AppLayout>
-      <h1 className="text-4xl font-bold">Propostas</h1>
-
-      <p className="mt-2 text-zinc-400">
-        Gerenciamento de propostas comerciais.
-      </p>
+      <ProposalsClient
+        initialProposals={proposals}
+      />
     </AppLayout>
   );
 }
