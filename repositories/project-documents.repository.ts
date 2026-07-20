@@ -8,6 +8,7 @@ type CreateProjectDocumentData = {
   mimeType: string;
   size: number;
   type: ProjectDocumentType;
+  uploadedById?: string | null;
   notes?: string | null;
 };
 
@@ -22,7 +23,16 @@ export async function createProjectDocument(
       mimeType: data.mimeType,
       size: data.size,
       type: data.type,
+      uploadedById: data.uploadedById ?? null,
       notes: data.notes ?? null,
+    },
+    include: {
+      uploadedBy: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 }
@@ -36,6 +46,14 @@ export async function findProjectDocuments(
     },
     orderBy: {
       createdAt: "desc",
+    },
+    include: {
+      uploadedBy: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 }
@@ -56,6 +74,53 @@ export async function deleteProjectDocument(
   return prisma.projectDocument.delete({
     where: {
       id,
+    },
+  });
+}
+
+export async function findCompanyProjectDocumentById(
+  id: string,
+  companyId: string
+) {
+  return prisma.projectDocument.findFirst({
+    where: {
+      id,
+      project: {
+        companyId,
+      },
+    },
+  });
+}
+
+export async function findCompanyProjectForDocuments(
+  projectId: string,
+  companyId: string
+) {
+  return prisma.project.findFirst({
+    where: {
+      id: projectId,
+      companyId,
+    },
+    select: {
+      id: true,
+    },
+  });
+}
+
+export async function updateProjectDocumentFavorite(
+  id: string,
+  isFavorite: boolean
+) {
+  return prisma.projectDocument.update({
+    where: { id },
+    data: { isFavorite },
+    include: {
+      uploadedBy: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 }

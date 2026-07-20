@@ -21,15 +21,16 @@ import {
   Phone,
   RefreshCw,
   Save,
+  Star,
   Trash2,
   Wrench,
   X,
 } from "lucide-react";
 
 import { ProjectServiceOrderTab } from "@/components/projects/tabs/ProjectServiceOrderTab";
+import { ProjectDocumentsTab } from "@/components/projects/tabs/ProjectDocumentsTab";
 import { Drawer } from "@/components/ui/Drawer";
 import type {
-  ProjectDocumentItem,
   ProjectListItem,
   ProjectTimelineItem,
   ProjectTimelineType,
@@ -114,21 +115,6 @@ function formatDate(
     dateStyle: "long",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function formatFileSize(size: number) {
-  if (size < 1024) {
-    return `${size} B`;
-  }
-
-  if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(1)} KB`;
-  }
-
-  return `${(
-    size /
-    (1024 * 1024)
-  ).toFixed(1)} MB`;
 }
 
 function normalizeStatus(status: string) {
@@ -610,9 +596,17 @@ export function ProjectDetailsDrawer({
 
                 {activeTab === "Documentos" && (
           <ProjectDocumentsTab
-            documents={
-              currentProject.documents
-            }
+            projectId={currentProject.id}
+            documents={currentProject.documents}
+            onDocumentsChange={(documents) => {
+              const updatedProject = {
+                ...currentProject,
+                documents,
+              };
+
+              setCurrentProject(updatedProject);
+              onProjectChange?.(updatedProject);
+            }}
           />
         )}
 
@@ -1026,74 +1020,6 @@ function ProjectSummaryTab({
   );
 }
 
-type ProjectDocumentsTabProps = {
-  documents: ProjectDocumentItem[];
-};
-
-function ProjectDocumentsTab({
-  documents,
-}: ProjectDocumentsTabProps) {
-  if (documents.length === 0) {
-    return (
-      <EmptyTab
-        icon={FileText}
-        title="Nenhum documento"
-        description="Os documentos técnicos vinculados ao projeto aparecerão aqui."
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {documents.map((document) => (
-        <a
-          key={document.id}
-          href={document.url}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-start justify-between gap-4 rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-5 transition hover:border-orange-500/25 hover:bg-orange-500/[0.04]"
-        >
-          <div className="flex min-w-0 gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-orange-400">
-              <FileText size={19} />
-            </div>
-
-            <div className="min-w-0">
-              <h3 className="truncate font-bold text-white">
-                {document.name}
-              </h3>
-
-              <p className="mt-1 text-sm text-zinc-500">
-                {document.type}
-              </p>
-
-              {document.notes && (
-                <p className="mt-2 line-clamp-2 text-sm text-zinc-400">
-                  {document.notes}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="shrink-0 text-right">
-            <p className="text-xs font-semibold text-zinc-400">
-              {formatFileSize(
-                document.size
-              )}
-            </p>
-
-            <p className="mt-2 text-xs text-zinc-600">
-              {formatDate(
-                document.createdAt
-              )}
-            </p>
-          </div>
-        </a>
-      ))}
-    </div>
-  );
-}
-
 type ProjectFinancialTabProps = {
   project: ProjectListItem;
 };
@@ -1389,6 +1315,16 @@ const TIMELINE_PRESENTATION: Record<
   DOCUMENT_DELETED: {
     icon: Trash2,
     className: "bg-red-500/10 text-red-400",
+    label: "Documento",
+  },
+  DOCUMENT_FAVORITED: {
+    icon: Star,
+    className: "bg-amber-500/10 text-amber-400",
+    label: "Documento",
+  },
+  DOCUMENT_UNFAVORITED: {
+    icon: Star,
+    className: "bg-zinc-500/10 text-zinc-400",
     label: "Documento",
   },
   FINANCIAL_CREATED: {

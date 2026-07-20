@@ -78,7 +78,16 @@ export async function findProjectsByCompany(
 
         serviceOrder: true,
 
-        documents: true,
+        documents: {
+          include: {
+            uploadedBy: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
 
       orderBy: {

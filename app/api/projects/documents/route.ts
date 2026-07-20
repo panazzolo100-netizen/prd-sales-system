@@ -4,7 +4,12 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 
 import { ProjectDocumentType } from "@/lib/generated/prisma/enums";
-import { uploadProjectDocument } from "../../../../services/project-documents.service";
+import {
+  setProjectDocumentFavorite,
+  uploadProjectDocument,
+} from "@/services/project-documents.service";
+
+const PROJECT_DOCUMENT_TYPES = Object.values(ProjectDocumentType);
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +32,20 @@ export async function POST(request: NextRequest) {
     if (!(file instanceof File)) {
       return NextResponse.json(
         { error: "Arquivo inválido." },
+        { status: 400 }
+      );
+    }
+
+    if (!projectId) {
+      return NextResponse.json(
+        { error: "Projeto obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    if (!PROJECT_DOCUMENT_TYPES.includes(type)) {
+      return NextResponse.json(
+        { error: "Categoria de documento inválida." },
         { status: 400 }
       );
     }
@@ -86,6 +105,37 @@ export async function POST(request: NextRequest) {
       {
         status: 500,
       }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const id = String(body.id ?? "").trim();
+
+    if (!id || typeof body.isFavorite !== "boolean") {
+      return NextResponse.json(
+        { error: "Documento e favorito são obrigatórios." },
+        { status: 400 }
+      );
+    }
+
+    const document = await setProjectDocumentFavorite({
+      id,
+      isFavorite: body.isFavorite,
+    });
+
+    return NextResponse.json(document);
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Erro ao atualizar documento.";
+
+    return NextResponse.json(
+      { error: message },
+      { status: message === "Documento não encontrado." ? 404 : 500 }
     );
   }
 }

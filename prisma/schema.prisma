@@ -43,6 +43,7 @@ enum ProjectDocumentType {
   PROJETO
   MEMORIAL
   NOTA_FISCAL
+  FOTOS
   GARANTIA
   MANUAL
   OUTRO
@@ -104,6 +105,8 @@ model User {
   leads Lead[]
 
   activities Activity[]
+
+  projectDocuments ProjectDocument[]
 
   @@schema("crm")
 }
@@ -581,6 +584,12 @@ model ProjectDocument {
 
   notes String?
 
+  isFavorite Boolean @default(false)
+
+  uploadedById String?
+
+  uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -590,6 +599,7 @@ model ProjectDocument {
 
   @@index([projectId])
   @@index([projectId, type])
+  @@index([uploadedById])
   @@schema("crm")
 }
 

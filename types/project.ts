@@ -21,6 +21,15 @@ export type ProjectDocumentItem = {
 
   notes: string | null;
 
+  isFavorite: boolean;
+
+  uploadedById: string | null;
+
+  uploadedBy: {
+    id: string;
+    name: string;
+  } | null;
+
   createdAt: Date | string;
   updatedAt: Date | string;
 
@@ -102,6 +111,8 @@ export type ProjectTimelineType =
   | "PROJECT_STATUS_CHANGED"
   | "DOCUMENT_UPLOADED"
   | "DOCUMENT_DELETED"
+  | "DOCUMENT_FAVORITED"
+  | "DOCUMENT_UNFAVORITED"
   | "FINANCIAL_CREATED"
   | "FINANCIAL_UPDATED"
   | "SERVICE_ORDER_CREATED"
