@@ -434,6 +434,14 @@ export function ClientsClient({
         onClientChange={
           handleClientChange
         }
+        onDeleted={(clientId) => {
+          setClients((current) =>
+            current.filter(
+              (client) => client.id !== clientId
+            )
+          );
+          setSelectedClient(null);
+        }}
       />
     </>
   );

@@ -1,6 +1,9 @@
 import { getCurrentCompanyId } from "@/lib/auth/current-user";
-import { findScheduledServiceOrders } from "@/repositories/agenda.repository";
-import { findCompanyAgendaUsers } from "@/repositories/agenda.repository";
+import {
+  findCompanyAgendaUsers,
+  findScheduledServiceOrders,
+  removeServiceOrderFromAgenda,
+} from "@/repositories/agenda.repository";
 
 export async function listScheduledServiceOrders() {
   const companyId = await getCurrentCompanyId();
@@ -11,4 +14,18 @@ export async function listScheduledServiceOrders() {
 export async function getAgendaData() {
   const companyId = await getCurrentCompanyId();
   return Promise.all([findScheduledServiceOrders(companyId), findCompanyAgendaUsers(companyId)]);
+}
+
+export async function deleteCompanyAgendaItem(id: string) {
+  const companyId = await getCurrentCompanyId();
+  const serviceOrder =
+    await removeServiceOrderFromAgenda(id, companyId);
+
+  if (!serviceOrder) {
+    throw new Error(
+      "Agendamento não encontrado ou já removido."
+    );
+  }
+
+  return serviceOrder;
 }

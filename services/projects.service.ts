@@ -9,7 +9,10 @@ import {
   type UpdateProjectData,
 } from "@/repositories/projects.repository";
 import { registerProjectEvent } from "@/services/project-timeline.service";
-import { toProjectDocumentResponses } from "@/services/project-documents.service";
+import {
+  removeProjectDocument,
+  toProjectDocumentResponses,
+} from "@/services/project-documents.service";
 
 export async function listCompanyProjects() {
   const companyId =
@@ -80,11 +83,23 @@ export async function deleteCompanyProject(id: string) {
   const dependencies = [
     project.serviceOrder ? "uma Ordem de Serviço" : null,
     project.financial ? "registros financeiros" : null,
-    project._count.documents ? `${project._count.documents} documento(s)` : null,
   ].filter(Boolean);
 
   if (dependencies.length) {
     throw new Error(`Este projeto possui ${dependencies.join(", ")} vinculado(s). Remova ou cancele esses vínculos antes de excluir.`);
   }
-  return deleteProject(id, companyId);
+
+  for (const document of project.documents) {
+    await removeProjectDocument(document.id);
+  }
+
+  const deleted = await deleteProject(id, companyId).catch(
+    () => null
+  );
+  if (!deleted) {
+    throw new Error(
+      "O projeto mudou ou recebeu novos vínculos durante a exclusão. Atualize a tela e tente novamente."
+    );
+  }
+  return deleted;
 }

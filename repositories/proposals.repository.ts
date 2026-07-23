@@ -150,3 +150,131 @@ export async function upsertProposal(
     },
   });
 }
+
+export async function findProposalDependencies(
+  id: string,
+  companyId: string
+) {
+  return prisma.proposal.findFirst({
+    where: {
+      id,
+      OR: [
+        {
+          lead: {
+            companyId,
+          },
+        },
+        {
+          client: {
+            companyId,
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      status: true,
+      lead: {
+        select: {
+          client: {
+            select: {
+              projects: {
+                select: {
+                  financial: {
+                    select: {
+                      id: true,
+                    },
+                  },
+                  serviceOrder: {
+                    select: {
+                      id: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      client: {
+        select: {
+          projects: {
+            select: {
+              financial: {
+                select: {
+                  id: true,
+                },
+              },
+              serviceOrder: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function deleteProposal(
+  id: string,
+  companyId: string
+) {
+  return prisma.$transaction(async (transaction) => {
+    const proposal = await transaction.proposal.findFirst({
+      where: {
+        id,
+        OR: [
+          { lead: { companyId } },
+          { client: { companyId } },
+        ],
+      },
+      select: {
+        status: true,
+        lead: {
+          select: {
+            client: {
+              select: {
+                projects: {
+                  select: {
+                    financial: { select: { id: true } },
+                    serviceOrder: { select: { id: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+        client: {
+          select: {
+            projects: {
+              select: {
+                financial: { select: { id: true } },
+                serviceOrder: { select: { id: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    const projects = [
+      ...(proposal?.lead?.client?.projects ?? []),
+      ...(proposal?.client?.projects ?? []),
+    ];
+    if (
+      !proposal ||
+      proposal.status.toUpperCase() === "APROVADA" ||
+      projects.some(
+        (project) =>
+          project.financial || project.serviceOrder
+      )
+    ) {
+      return null;
+    }
+    return transaction.proposal.delete({
+      where: { id },
+    });
+  }, { isolationLevel: "Serializable" });
+}

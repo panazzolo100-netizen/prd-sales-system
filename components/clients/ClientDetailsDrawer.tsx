@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { Drawer } from "@/components/ui/Drawer";
+import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
 import type { ClientListItem } from "@/types/client";
 
 type ClientTab =
@@ -40,6 +41,7 @@ type Props = {
   onClientChange?: (
     client: ClientListItem
   ) => void;
+  onDeleted?: (clientId: string) => void;
 };
 
 type FeedbackMessage = {
@@ -122,6 +124,7 @@ export function ClientDetailsDrawer({
   open,
   onClose,
   onClientChange,
+  onDeleted,
 }: Props) {
   const [activeTab, setActiveTab] =
     useState<ClientTab>("Resumo");
@@ -333,6 +336,19 @@ export function ClientDetailsDrawer({
       }
       maxWidthClassName="max-w-5xl"
     >
+      <div className="flex justify-end border-b border-white/[0.07] px-8 py-4">
+        <EntityDeleteButton
+          endpoint={`/api/clients?id=${encodeURIComponent(currentClient.id)}`}
+          entityName={currentClient.name}
+          buttonLabel="Excluir cliente"
+          consequence="A exclusão só será permitida se não existirem oportunidade, propostas, projetos, documentos, Ordens de Serviço, agenda ou histórico financeiro vinculados."
+          successMessage="Cliente excluído com sucesso."
+          onDeleted={() => {
+            onDeleted?.(currentClient.id);
+            onClose();
+          }}
+        />
+      </div>
       {feedback && (
         <div className="px-8 pt-6">
           <div

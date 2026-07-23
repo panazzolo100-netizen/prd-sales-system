@@ -1,9 +1,42 @@
 import { NextResponse } from "next/server";
 
 import {
+  deleteCompanyProposal,
   getProposal,
   saveProposal,
 } from "@/services/proposals.service";
+
+export async function DELETE(request: Request) {
+  try {
+    const id = new URL(request.url).searchParams.get("id")?.trim();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Proposta obrigatória." },
+        { status: 400 }
+      );
+    }
+
+    await deleteCompanyProposal(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Erro ao excluir proposta.";
+    return NextResponse.json(
+      { error: message },
+      {
+        status: message.includes("não encontrada")
+          ? 404
+          : message.includes("não pode") ||
+              message.includes("mudou")
+            ? 409
+            : 500,
+      }
+    );
+  }
+}
 
 function hasField(
   body: Record<string, unknown>,

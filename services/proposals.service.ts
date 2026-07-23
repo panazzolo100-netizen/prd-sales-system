@@ -1,6 +1,8 @@
 import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
 import {
+  deleteProposal,
+  findProposalDependencies,
   findProposalByLead,
   findProposalsByCompany,
   upsertProposal,
@@ -79,4 +81,52 @@ export async function generateProposal(
         dimensioning.paybackYears ?? 0,
     }
   );
+}
+
+export async function deleteCompanyProposal(id: string) {
+  const companyId = await getCurrentCompanyId();
+  const proposal = await findProposalDependencies(
+    id,
+    companyId
+  );
+
+  if (!proposal) {
+    throw new Error(
+      "Proposta não encontrada ou já excluída."
+    );
+  }
+
+  const projects = [
+    ...(proposal.lead?.client?.projects ?? []),
+    ...(proposal.client?.projects ?? []),
+  ];
+  const dependencies = [
+    proposal.status.toUpperCase() === "APROVADA"
+      ? "proposta aprovada"
+      : null,
+    projects.some((project) => project.serviceOrder)
+      ? "histórico operacional em Ordem de Serviço"
+      : null,
+    projects.some((project) => project.financial)
+      ? "histórico financeiro consolidado"
+      : null,
+  ].filter((value): value is string => Boolean(value));
+
+  if (dependencies.length > 0) {
+    throw new Error(
+      `A proposta não pode ser excluída porque possui ${dependencies.join(
+        ", "
+      )}.`
+    );
+  }
+
+  const deleted = await deleteProposal(id, companyId).catch(
+    () => null
+  );
+  if (!deleted) {
+    throw new Error(
+      "A proposta mudou ou recebeu novos vínculos durante a exclusão. Atualize a tela e tente novamente."
+    );
+  }
+  return deleted;
 }

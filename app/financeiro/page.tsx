@@ -11,6 +11,7 @@ import {
 } from "@/services/financial.service";
 import { FinancialUpload } from "@/components/financial/FinancialUpload";
 import { FinancialAttachments } from "@/components/financial/FinancialAttachments";
+import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
 import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
 
@@ -431,6 +432,15 @@ export default async function FinanceiroPage() {
 
                   <button type="submit" className="mt-5 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-orange-600">Salvar financeiro</button>
                   </form>
+                  <div className="mt-4 flex justify-end">
+                    <EntityDeleteButton
+                      endpoint={`/api/financial?id=${encodeURIComponent(financeiro.id)}`}
+                      entityName={`Financeiro de ${financeiro.project.title} — ${financeiro.project.client.name}`}
+                      buttonLabel="Excluir financeiro"
+                      consequence="Parcelas e lançamentos pendentes serão removidos. Projeto e cliente serão preservados. Valores recebidos, parcelas pagas ou lançamentos consolidados bloqueiam a exclusão."
+                      successMessage="Registro financeiro excluído com sucesso."
+                    />
+                  </div>
 
                   {financeiro.installments.length > 0 && (
   <div className="mt-6 overflow-hidden rounded-xl border border-zinc-800">

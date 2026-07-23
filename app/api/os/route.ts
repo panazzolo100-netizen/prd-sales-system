@@ -4,9 +4,42 @@ import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
 import {
   createServiceOrderData,
+  deleteCompanyServiceOrder,
   updateServiceOrderData,
   updateServiceOrderSignaturesData,
 } from "@/services/service-orders.service";
+
+export async function DELETE(request: Request) {
+  try {
+    const id = new URL(request.url).searchParams.get("id")?.trim();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Ordem de Serviço obrigatória." },
+        { status: 400 }
+      );
+    }
+
+    await deleteCompanyServiceOrder(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Erro ao excluir Ordem de Serviço.";
+    return NextResponse.json(
+      { error: message },
+      {
+        status: message.includes("não encontrada")
+          ? 404
+          : message.includes("não pode") ||
+              message.includes("mudou")
+            ? 409
+            : 500,
+      }
+    );
+  }
+}
 
 function nullableString(
   value: unknown

@@ -20,6 +20,7 @@ import { ProposalHistoryTab } from "@/components/proposals/tabs/ProposalHistoryT
 import { ProposalPdfTab } from "@/components/proposals/tabs/ProposalPdfTab";
 import { ProposalSummaryTab } from "@/components/proposals/tabs/ProposalSummaryTab";
 import { Drawer } from "@/components/ui/Drawer";
+import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
 
 import type {
   ProposalListItem,
@@ -40,6 +41,7 @@ type Props = {
   onProposalChange?: (
     proposal: ProposalListItem
   ) => void;
+  onDeleted?: (proposalId: string) => void;
 };
 
 type FeedbackMessage = {
@@ -143,6 +145,7 @@ export function ProposalDetailsDrawer({
   open,
   onClose,
   onProposalChange,
+  onDeleted,
 }: Props) {
   const [activeTab, setActiveTab] =
     useState<ProposalTab>("Resumo");
@@ -318,6 +321,19 @@ export function ProposalDetailsDrawer({
       }
       maxWidthClassName="max-w-5xl"
     >
+      <div className="flex justify-end border-b border-white/[0.07] px-8 py-4">
+        <EntityDeleteButton
+          endpoint={`/api/proposals?id=${encodeURIComponent(currentProposal.id)}`}
+          entityName={`${currentProposal.title} — ${currentProposal.lead?.companyName ?? "sem lead vinculado"}`}
+          buttonLabel="Excluir proposta"
+          consequence="O lead, o cliente, projetos e registros financeiros não serão excluídos. Propostas aprovadas ou ligadas a histórico operacional/financeiro serão bloqueadas."
+          successMessage="Proposta excluída com sucesso."
+          onDeleted={() => {
+            onDeleted?.(currentProposal.id);
+            onClose();
+          }}
+        />
+      </div>
       {feedback && (
         <div className="animate-in fade-in slide-in-from-top-2 px-8 pt-6 duration-300">
           <div

@@ -543,6 +543,14 @@ export function ProposalsClient({
         onClose={() =>
           setSelectedProposal(null)
         }
+        onDeleted={(proposalId) => {
+          setProposals((current) =>
+            current.filter(
+              (proposal) => proposal.id !== proposalId
+            )
+          );
+          setSelectedProposal(null);
+        }}
         onProposalChange={
           handleProposalChange
         }

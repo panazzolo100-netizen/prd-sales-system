@@ -336,3 +336,188 @@ export async function findServiceOrderDashboard(
     },
   });
 }
+
+export async function findServiceOrderDeletionDependencies(
+  id: string,
+  companyId: string
+) {
+  return prisma.serviceOrder.findFirst({
+    where: {
+      id,
+      companyId,
+    },
+    select: {
+      id: true,
+      number: true,
+      status: true,
+      startedDate: true,
+      completedDate: true,
+      signedAt: true,
+      customerSignature: true,
+      technicianSignature: true,
+      checklistArt: true,
+      checklistProjectApproved: true,
+      checklistMaterialsSeparated: true,
+      checklistStructureInstalled: true,
+      checklistModulesInstalled: true,
+      checklistInverterInstalled: true,
+      checklistDcCabling: true,
+      checklistAcCabling: true,
+      checklistCommissioning: true,
+      checklistCustomerTraining: true,
+      checklistDelivered: true,
+      photos: {
+        select: {
+          id: true,
+        },
+      },
+      project: {
+        select: {
+          financial: {
+            select: {
+              id: true,
+              status: true,
+              receivedValue: true,
+              installments: {
+                select: {
+                  status: true,
+                  paidAt: true,
+                },
+              },
+              cashFlow: {
+                select: {
+                  status: true,
+                  paidAt: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function deleteServiceOrderRepository(
+  id: string,
+  companyId: string
+) {
+  return prisma.$transaction(async (transaction) => {
+    const current = await transaction.serviceOrder.findFirst({
+      where: {
+        id,
+        companyId,
+      },
+      select: {
+        startedDate: true,
+        completedDate: true,
+        signedAt: true,
+        customerSignature: true,
+        technicianSignature: true,
+        checklistArt: true,
+        checklistProjectApproved: true,
+        checklistMaterialsSeparated: true,
+        checklistStructureInstalled: true,
+        checklistModulesInstalled: true,
+        checklistInverterInstalled: true,
+        checklistDcCabling: true,
+        checklistAcCabling: true,
+        checklistCommissioning: true,
+        checklistCustomerTraining: true,
+        checklistDelivered: true,
+        photos: {
+          select: {
+            id: true,
+          },
+        },
+        project: {
+          select: {
+          financial: {
+            select: {
+              id: true,
+              status: true,
+              receivedValue: true,
+              installments: {
+                select: {
+                  status: true,
+                  paidAt: true,
+                },
+              },
+              cashFlow: {
+                select: {
+                  status: true,
+                  paidAt: true,
+                },
+              },
+            },
+            },
+          },
+        },
+      },
+    });
+
+    const financial = current?.project.financial;
+    const consolidatedFinancial = Boolean(
+      financial &&
+        (financial.receivedValue > 0 ||
+          ["PAGO", "RECEBIDO", "PARCIAL", "CONCILIADO"].includes(
+            financial.status.toUpperCase()
+          ) ||
+          financial.installments.some(
+            (item) =>
+              item.paidAt ||
+              item.status.toUpperCase() === "PAGO"
+          ) ||
+          financial.cashFlow.some(
+            (item) =>
+              item.paidAt ||
+              ["PAGO", "RECEBIDO", "CONCILIADO"].includes(
+                item.status.toUpperCase()
+              )
+          ))
+    );
+    const checklistStarted = Boolean(
+      current &&
+        [
+          current.checklistArt,
+          current.checklistProjectApproved,
+          current.checklistMaterialsSeparated,
+          current.checklistStructureInstalled,
+          current.checklistModulesInstalled,
+          current.checklistInverterInstalled,
+          current.checklistDcCabling,
+          current.checklistAcCabling,
+          current.checklistCommissioning,
+          current.checklistCustomerTraining,
+          current.checklistDelivered,
+        ].some(Boolean)
+    );
+
+    if (
+      !current ||
+      current.startedDate ||
+      current.completedDate ||
+      current.signedAt ||
+      current.customerSignature ||
+      current.technicianSignature ||
+      checklistStarted ||
+      current.photos.length > 0 ||
+      consolidatedFinancial
+    ) {
+      return null;
+    }
+
+    await transaction.serviceOrderTimeline.deleteMany({
+      where: {
+        serviceOrderId: id,
+      },
+    });
+
+    return transaction.serviceOrder.delete({
+      where: {
+        id,
+        companyId,
+      },
+    });
+  }, { isolationLevel: "Serializable" });
+}

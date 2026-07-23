@@ -1,12 +1,14 @@
 import {
   completeServiceOrderProject,
   createServiceOrderRepository,
+  deleteServiceOrderRepository,
   findAvailableProjectsForServiceOrder,
   findProjectForServiceOrder,
   findServiceOrderChecklist,
   findServiceOrderForPdf,
   findServiceOrderDashboard,
   findServiceOrderForUpdate,
+  findServiceOrderDeletionDependencies,
   findServiceOrdersByCompany,
   updateServiceOrderChecklist,
   updateServiceOrderRepository,
@@ -21,6 +23,7 @@ import {
   resolveServiceType,
 } from "@/lib/service-technical-details";
 import {
+  removeServiceOrderPhoto,
   toServiceOrderPhotoResponse,
   toServiceOrderPhotoResponses,
 } from "@/services/service-order-photos.service";
@@ -330,6 +333,93 @@ export async function updateServiceOrderSignaturesData(
   }
 ) {
   return saveServiceOrderSignatures(data);
+}
+
+export async function deleteCompanyServiceOrder(id: string) {
+  const companyId = await getCurrentCompanyId();
+  const serviceOrder =
+    await findServiceOrderDeletionDependencies(
+      id,
+      companyId
+    );
+
+  if (!serviceOrder) {
+    throw new Error(
+      "Ordem de Serviço não encontrada ou já excluída."
+    );
+  }
+
+  const checklistStarted = [
+    serviceOrder.checklistArt,
+    serviceOrder.checklistProjectApproved,
+    serviceOrder.checklistMaterialsSeparated,
+    serviceOrder.checklistStructureInstalled,
+    serviceOrder.checklistModulesInstalled,
+    serviceOrder.checklistInverterInstalled,
+    serviceOrder.checklistDcCabling,
+    serviceOrder.checklistAcCabling,
+    serviceOrder.checklistCommissioning,
+    serviceOrder.checklistCustomerTraining,
+    serviceOrder.checklistDelivered,
+  ].some(Boolean);
+  const financial = serviceOrder.project.financial;
+  const consolidatedFinancial = Boolean(
+    financial &&
+      (financial.receivedValue > 0 ||
+        ["PAGO", "RECEBIDO", "PARCIAL", "CONCILIADO"].includes(
+          financial.status.toUpperCase()
+        ) ||
+        financial.installments.some(
+          (item) =>
+            item.paidAt ||
+            item.status.toUpperCase() === "PAGO"
+        ) ||
+        financial.cashFlow.some(
+          (item) =>
+            item.paidAt ||
+            ["PAGO", "RECEBIDO", "CONCILIADO"].includes(
+              item.status.toUpperCase()
+            )
+        ))
+  );
+  const dependencies = [
+    serviceOrder.startedDate || serviceOrder.completedDate
+      ? "execução operacional iniciada ou concluída"
+      : null,
+    checklistStarted ? "checklist operacional preenchido" : null,
+    serviceOrder.signedAt ||
+    serviceOrder.customerSignature ||
+    serviceOrder.technicianSignature
+      ? "assinaturas registradas"
+      : null,
+    consolidatedFinancial
+      ? "movimentação financeira consolidada no projeto"
+      : null,
+  ].filter((value): value is string => Boolean(value));
+
+  if (dependencies.length > 0) {
+    throw new Error(
+      `A Ordem de Serviço não pode ser excluída porque possui ${dependencies.join(
+        ", "
+      )}.`
+    );
+  }
+
+  for (const photo of serviceOrder.photos) {
+    await removeServiceOrderPhoto(photo.id);
+  }
+
+  const deleted = await deleteServiceOrderRepository(
+    id,
+    companyId
+  ).catch(() => null);
+  if (!deleted) {
+    throw new Error(
+      "A Ordem de Serviço mudou ou recebeu novos vínculos durante a exclusão. Atualize a tela e tente novamente."
+    );
+  }
+
+  return deleted;
 }
 
 export async function getServiceOrderPdfData(

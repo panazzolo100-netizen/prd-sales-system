@@ -1,10 +1,16 @@
 import {
+  deleteFinancialRepository,
   findCompanyFinancials,
+  findFinancialDeletionDependencies,
   findFinancialById,
   updateFinancialRepository,
 } from "@/repositories/financial.repository";
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
 import { registerProjectEvent } from "@/services/project-timeline.service";
-import { toFinancialAttachmentResponses } from "@/services/financial-attachments.service";
+import {
+  removeFinancialAttachment,
+  toFinancialAttachmentResponses,
+} from "@/services/financial-attachments.service";
 
 export async function listCompanyFinancials(
   companyId: string
@@ -108,4 +114,72 @@ export async function updateFinancialData(data: {
   }
 
   return updatedFinancial;
+}
+
+export async function deleteCompanyFinancial(id: string) {
+  const companyId = await getCurrentCompanyId();
+  const financial =
+    await findFinancialDeletionDependencies(
+      id,
+      companyId
+    );
+
+  if (!financial) {
+    throw new Error(
+      "Registro financeiro não encontrado ou já excluído."
+    );
+  }
+
+  const paidInstallments = financial.installments.filter(
+    (item) =>
+      item.paidAt ||
+      item.status.toUpperCase() === "PAGO"
+  ).length;
+  const consolidatedEntries = financial.cashFlow.filter(
+    (item) =>
+      item.paidAt ||
+      ["PAGO", "RECEBIDO", "CONCILIADO"].includes(
+        item.status.toUpperCase()
+      )
+  ).length;
+  const dependencies = [
+    financial.receivedValue > 0
+      ? "valor já recebido"
+      : null,
+    ["PAGO", "RECEBIDO", "PARCIAL", "CONCILIADO"].includes(
+      financial.status.toUpperCase()
+    )
+      ? `status ${financial.status}`
+      : null,
+    paidInstallments
+      ? `${paidInstallments} parcela(s) paga(s)`
+      : null,
+    consolidatedEntries
+      ? `${consolidatedEntries} lançamento(s) consolidado(s) no fluxo de caixa`
+      : null,
+  ].filter((value): value is string => Boolean(value));
+
+  if (dependencies.length > 0) {
+    throw new Error(
+      `O registro financeiro não pode ser excluído porque possui ${dependencies.join(
+        ", "
+      )}.`
+    );
+  }
+
+  for (const attachment of financial.attachments) {
+    await removeFinancialAttachment(attachment.id);
+  }
+
+  const deleted = await deleteFinancialRepository(
+    id,
+    companyId
+  ).catch(() => null);
+  if (!deleted) {
+    throw new Error(
+      "O registro financeiro mudou ou recebeu novos vínculos durante a exclusão. Atualize a tela e tente novamente."
+    );
+  }
+
+  return deleted;
 }

@@ -1,9 +1,42 @@
 import { NextResponse } from "next/server";
 
 import {
+  deleteCompanyClient,
   listCompanyClients,
   updateCompanyClient,
 } from "@/services/clients.service";
+
+export async function DELETE(request: Request) {
+  try {
+    const id = new URL(request.url).searchParams.get("id")?.trim();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Cliente obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    await deleteCompanyClient(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Erro ao excluir cliente.";
+    return NextResponse.json(
+      { error: message },
+      {
+        status: message.includes("não encontrado")
+          ? 404
+          : message.includes("não pode") ||
+              message.includes("mudou")
+            ? 409
+            : 500,
+      }
+    );
+  }
+}
 
 export async function GET() {
   try {

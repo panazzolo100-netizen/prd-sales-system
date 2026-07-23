@@ -7,6 +7,7 @@ import {
 
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
+import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
 import {
   CalendarDays,
   CheckCircle2,
@@ -807,6 +808,13 @@ export default async function OrdensServicoPage() {
                         Salvar
                       </button>
                     </form>
+                    <EntityDeleteButton
+                      endpoint={`/api/os?id=${encodeURIComponent(ordem.id)}`}
+                      entityName={`${ordem.number} — ${ordem.title}`}
+                      buttonLabel="Excluir OS"
+                      consequence="Timeline e fotos internas serão removidas. Projeto, cliente, lead e proposta serão preservados. Execução, checklist, assinatura ou financeiro consolidado bloqueiam a exclusão."
+                      successMessage="Ordem de Serviço excluída com sucesso."
+                    />
                   </div>
                 </div>
               </article>

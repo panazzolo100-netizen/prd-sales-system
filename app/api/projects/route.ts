@@ -91,6 +91,17 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao excluir projeto.";
-    return NextResponse.json({ error: message }, { status: message.includes("vinculado") ? 409 : 400 });
+    return NextResponse.json(
+      { error: message },
+      {
+        status:
+          message.includes("vinculado") ||
+          message.includes("mudou")
+            ? 409
+            : message.includes("não encontrado")
+              ? 404
+              : 400,
+      }
+    );
   }
 }

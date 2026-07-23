@@ -25,6 +25,11 @@ const optionalNumber = z.preprocess((value) => {
   return value;
 }, z.number().optional().nullable());
 
+const serviceDetailsSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean()])
+);
+
 export const createLeadSchema = z.object({
   ownerId: optionalText,
 
@@ -49,7 +54,7 @@ export const createLeadSchema = z.object({
   source: optionalText,
 
   serviceType: z.enum(OPPORTUNITY_SERVICE_TYPES),
-  serviceDetails: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional().default({}),
+  serviceDetails: serviceDetailsSchema.optional().default({}),
 
   status: z
     .nativeEnum(LeadStatus)
@@ -71,7 +76,9 @@ export const createLeadSchema = z.object({
 });
 
 export const updateLeadSchema =
-  createLeadSchema.partial();
+  createLeadSchema.partial().extend({
+    serviceDetails: serviceDetailsSchema.optional(),
+  });
 
 export type CreateLeadInput = z.infer<
   typeof createLeadSchema

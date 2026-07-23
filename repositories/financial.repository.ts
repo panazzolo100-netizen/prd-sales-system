@@ -133,3 +133,115 @@ export async function receiveFinancialInstallmentTransaction(data: { financialId
     return { received: receivedValue, status };
   });
 }
+
+export async function findFinancialDeletionDependencies(
+  id: string,
+  companyId: string
+) {
+  return prisma.financial.findFirst({
+    where: {
+      id,
+      companyId,
+    },
+    select: {
+      id: true,
+      status: true,
+      receivedValue: true,
+      installments: {
+        select: {
+          id: true,
+          status: true,
+          paidAt: true,
+        },
+      },
+      cashFlow: {
+        select: {
+          id: true,
+          status: true,
+          paidAt: true,
+        },
+      },
+      attachments: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+}
+
+export async function deleteFinancialRepository(
+  id: string,
+  companyId: string
+) {
+  return prisma.$transaction(async (transaction) => {
+    const current = await transaction.financial.findFirst({
+      where: {
+        id,
+        companyId,
+      },
+      select: {
+        receivedValue: true,
+        status: true,
+        installments: {
+          select: {
+            status: true,
+            paidAt: true,
+          },
+        },
+        cashFlow: {
+          select: {
+            status: true,
+            paidAt: true,
+          },
+        },
+        _count: {
+          select: {
+            attachments: true,
+          },
+        },
+      },
+    });
+
+    const consolidated =
+      !current ||
+      current.receivedValue > 0 ||
+      ["PAGO", "RECEBIDO", "PARCIAL", "CONCILIADO"].includes(
+        current.status.toUpperCase()
+      ) ||
+      current.installments.some(
+        (item) =>
+          item.paidAt ||
+          item.status.toUpperCase() === "PAGO"
+      ) ||
+      current.cashFlow.some(
+        (item) =>
+          item.paidAt ||
+          ["PAGO", "RECEBIDO", "CONCILIADO"].includes(
+            item.status.toUpperCase()
+          )
+      );
+
+    if (consolidated || current._count.attachments > 0) {
+      return null;
+    }
+
+    await transaction.cashFlow.deleteMany({
+      where: {
+        financialId: id,
+        companyId,
+      },
+    });
+    await transaction.financialInstallment.deleteMany({
+      where: {
+        financialId: id,
+      },
+    });
+    return transaction.financial.delete({
+      where: {
+        id,
+        companyId,
+      },
+    });
+  }, { isolationLevel: "Serializable" });
+}

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { createEngineeringProject, getEngineeringOverview } from "@/services/engineering.service";
 import { ProgressBar } from "@/components/ui/erp";
+import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
 import { Camera, FileText, UserRound, UsersRound } from "lucide-react";
 import { ENGINEERING_SERVICE_TYPES, engineeringTypeLabel } from "@/lib/engineering-service-types";
 import { formatPhone } from "@/utils/formatters";
@@ -260,6 +261,14 @@ export default async function Engenharia() {
               >
                 Abrir Projeto
               </Link>
+              <EntityDeleteButton
+                endpoint={`/api/projects?id=${encodeURIComponent(projeto.id)}`}
+                entityName={`${projeto.title} — ${projeto.client.name}`}
+                buttonLabel="Excluir projeto"
+                consequence="Etapas, eventos e documentos próprios serão removidos, inclusive seus arquivos no Storage. Cliente e lead serão preservados. Ordem de Serviço ou financeiro bloqueiam a exclusão."
+                successMessage="Projeto excluído com sucesso."
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
+              />
             </div>
           );})}
         </div>
