@@ -1,5 +1,5 @@
 import { Sidebar } from "./Sidebar";
-import { Topbar } from "./Topbar";
+import { Topbar } from "./TopBar";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
