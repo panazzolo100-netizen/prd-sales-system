@@ -1,9 +1,6 @@
 import { revalidatePath } from "next/cache";
 
-import {
-  generateInstallments,
-  getInstallments,
-} from "@/services/financial-installments.service";
+import { generateInstallments } from "@/services/financial-installments.service";
 
 import { receiveFinancialInstallment } from "@/services/financial-receipt.service";
 
@@ -22,10 +19,6 @@ function formatCurrency(value: number) {
     style: "currency",
     currency: "BRL",
   }).format(value);
-}
-
-function formatNumberInput(value: number) {
-  return value.toFixed(2);
 }
 
 function statusLabel(status: string) {
@@ -64,10 +57,12 @@ function statusClass(status: string) {
 }
 
 function parseCurrencyValue(value: FormDataEntryValue | null) {
-  const rawValue = String(value ?? "")
-    .replace(/\./g, "")
-    .replace(",", ".")
+  const sanitizedValue = String(value ?? "")
+    .replace(/[^\d,.-]/g, "")
     .trim();
+  const rawValue = sanitizedValue.includes(",")
+    ? sanitizedValue.replace(/\./g, "").replace(",", ".")
+    : sanitizedValue;
 
   const parsedValue = Number(rawValue);
 
@@ -114,37 +109,6 @@ async function updateFinancial(
       "Registro financeiro não identificado."
     );
   }
-  async function generateFinancialInstallments(
-  formData: FormData
-) {
-  "use server";
-
-  const financialId = String(
-    formData.get("financialId") ?? ""
-  );
-
-  const totalValue = Number(
-    formData.get("totalValue")
-  );
-
-  const quantity = Number(
-    formData.get("quantity")
-  );
-
-  const firstDueDate = new Date(
-    String(formData.get("firstDueDate"))
-  );
-
-  await generateInstallments({
-    financialId,
-    totalValue,
-    quantity,
-    firstDueDate,
-  });
-
-  revalidatePath("/financeiro");
-}
-
   await updateFinancialData({
     id,
     companyId,
@@ -185,6 +149,7 @@ async function generateFinancialInstallments(
     totalValue,
     quantity,
     firstDueDate,
+    replaceExisting: formData.get("replaceExisting") === "on",
   });
 
   revalidatePath("/financeiro");
@@ -254,7 +219,7 @@ export default async function FinanceiroPage() {
   </a>
 </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-6">
           <Card
             label="Total vendido"
             value={formatCurrency(
@@ -301,7 +266,7 @@ export default async function FinanceiroPage() {
           />
         </div>
 
-        <div className="space-y-5">
+        <div className="grid items-start gap-5 2xl:grid-cols-2">
           {financeiros.map(
             (financeiro) => {
               const pendente =
@@ -311,13 +276,14 @@ export default async function FinanceiroPage() {
               const lucro =
                 financeiro.saleValue -
                 financeiro.costValue;
+              const receivedPercentage = financeiro.saleValue === 0 ? 0 : Math.min(100, Math.round(financeiro.receivedValue / financeiro.saleValue * 100));
 
               return (
-                <form
+                <article
                   key={financeiro.id}
-                  action={updateFinancial}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6"
+                  className="min-w-0 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition hover:border-white/[0.12] sm:p-6"
                 >
+                  <form action={updateFinancial}>
                   <input
                     type="hidden"
                     name="id"
@@ -355,40 +321,37 @@ export default async function FinanceiroPage() {
                   <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                     <Field label="Valor da venda">
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         name="saleValue"
-                        min="0"
-                        step="0.01"
-                        defaultValue={formatNumberInput(
+                        defaultValue={formatCurrency(
                           financeiro.saleValue
                         )}
-                        className={inputClass}
+                        className={currencyInputClass}
                       />
                     </Field>
 
                     <Field label="Custos">
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         name="costValue"
-                        min="0"
-                        step="0.01"
-                        defaultValue={formatNumberInput(
+                        defaultValue={formatCurrency(
                           financeiro.costValue
                         )}
-                        className={inputClass}
+                        className={currencyInputClass}
                       />
                     </Field>
 
                     <Field label="Valor recebido">
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         name="receivedValue"
-                        min="0"
-                        step="0.01"
-                        defaultValue={formatNumberInput(
+                        defaultValue={formatCurrency(
                           financeiro.receivedValue
                         )}
-                        className={inputClass}
+                        className={currencyInputClass}
                       />
                     </Field>
 
@@ -448,6 +411,7 @@ export default async function FinanceiroPage() {
                       }%`}
                     />
                   </div>
+                  <div className="mt-5"><div className="mb-2 flex items-center justify-between text-xs font-semibold"><span className="text-zinc-500">Progresso de recebimento</span><span className="text-emerald-400">{receivedPercentage}%</span></div><div className="h-2 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${receivedPercentage}%` }} /></div></div>
 
                   <div className="mt-5">
                     <Field label="Observações">
@@ -464,6 +428,9 @@ export default async function FinanceiroPage() {
                       />
                     </Field>
                   </div>
+
+                  <button type="submit" className="mt-5 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-orange-600">Salvar financeiro</button>
+                  </form>
 
                   {financeiro.installments.length > 0 && (
   <div className="mt-6 overflow-hidden rounded-xl border border-zinc-800">
@@ -594,6 +561,9 @@ export default async function FinanceiroPage() {
       className={inputClass}
     />
   </Field>
+  {financeiro.installments.length > 0 && <label className="flex items-center gap-2 pb-3 text-xs text-amber-300"><input type="checkbox" name="replaceExisting" required />Confirmo a substituição das parcelas existentes</label>}
+  <button type="submit" className="rounded-xl bg-cyan-600 px-6 py-3 font-bold text-white hover:bg-cyan-700">Gerar parcelas</button>
+</form>
 <div className="mt-6">
   <FinancialUpload
     financialId={financeiro.id}
@@ -661,20 +631,7 @@ export default async function FinanceiroPage() {
     </p>
   )}
 </div>
-  <button
-    type="submit"
-    className="rounded-xl bg-cyan-600 px-6 py-3 font-bold text-white hover:bg-cyan-700"
-  >
-    Gerar Parcelas
-  </button>
-</form>
-                  <button
-                    type="submit"
-                    className="mt-6 rounded-xl bg-orange-500 px-6 py-3 font-bold text-white transition hover:bg-orange-600"
-                  >
-                    Salvar Financeiro
-                  </button>
-                </form>
+                </article>
               );
             }
           )}
@@ -699,6 +656,9 @@ export default async function FinanceiroPage() {
 const inputClass =
   "w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-orange-500";
 
+const currencyInputClass =
+  "w-full min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-lg font-bold leading-tight tracking-tight text-white tabular-nums outline-none focus:border-orange-500";
+
 const textareaClass =
   "w-full resize-none rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-white outline-none focus:border-orange-500";
 
@@ -712,13 +672,13 @@ function Card({
   valueClass?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+    <div className="min-w-0 rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-5">
       <p className="text-sm text-zinc-400">
         {label}
       </p>
 
       <h2
-        className={`mt-2 break-words text-2xl font-bold ${valueClass}`}
+        className={`mt-3 whitespace-nowrap text-xl font-black leading-tight tracking-tight tabular-nums sm:text-2xl min-[1800px]:text-[clamp(1.25rem,1.45vw,1.75rem)] ${valueClass}`}
       >
         {value}
       </h2>
@@ -752,12 +712,12 @@ function Summary({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+    <div className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
       <p className="text-sm text-zinc-500">
         {label}
       </p>
 
-      <p className="mt-2 font-bold text-white">
+      <p className="mt-2 whitespace-nowrap text-lg font-bold leading-tight tracking-tight text-white tabular-nums">
         {value}
       </p>
     </div>

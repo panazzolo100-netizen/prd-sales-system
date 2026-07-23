@@ -18,6 +18,7 @@ import {
 
 import { ProjectDetailsDrawer } from "@/components/projects/ProjectDetailsDrawer";
 import type { ProjectListItem } from "@/types/project";
+import { formatPhone } from "@/utils/formatters";
 
 type ProjectsClientProps = {
   initialProjects: ProjectListItem[];
@@ -525,6 +526,10 @@ export function ProjectsClient({
         onProjectChange={
           handleProjectChange
         }
+        onDeleted={(projectId) => {
+          setProjects((current) => current.filter((item) => item.id !== projectId));
+          setSelectedProject(null);
+        }}
       />
     </>
   );
@@ -678,7 +683,7 @@ function ProjectCard({
         <ContactLine
           icon={UserRound}
           value={
-            project.client.phone ??
+            (project.client.phone ? formatPhone(project.client.phone) : null) ??
             project.client.email ??
             "Contato não informado"
           }

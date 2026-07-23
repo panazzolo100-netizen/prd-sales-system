@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   useEffect,
   useMemo,
@@ -7,17 +8,28 @@ import {
 } from "react";
 import {
   CalendarDays,
+  Camera,
   CheckCircle2,
+  Clock3,
   ClipboardCheck,
+  ExternalLink,
+  FileText,
+  ImageIcon,
   LoaderCircle,
+  MapPin,
+  Pencil,
+  Phone,
   Save,
   UserRound,
   Wrench,
+  X,
 } from "lucide-react";
 
 import type {
   ProjectListItem,
   ProjectServiceOrder,
+  ServiceOrderDashboard,
+  ServiceOrderRecentPhoto,
 } from "@/types/project";
 
 import { ProjectPhotosTab } from "@/components/projects/tabs/ProjectPhotosTab";
@@ -28,6 +40,7 @@ type Props = {
   onProjectChange?: (
     project: ProjectListItem
   ) => void;
+  onOpenProjectHistory?: () => void;
 };
 
 type ServiceOrderForm = {
@@ -86,52 +99,71 @@ const statusOptions = [
 const checklistDefinitions: {
   key: keyof ChecklistData;
   label: string;
+  group: "Documentação" | "Preparação" | "Instalação" | "Finalização";
 }[] = [
   {
     key: "checklistArt",
     label: "ART",
+    group: "Documentação",
   },
   {
     key: "checklistProjectApproved",
     label: "Projeto aprovado",
+    group: "Documentação",
   },
   {
     key: "checklistMaterialsSeparated",
     label: "Materiais separados",
+    group: "Preparação",
   },
   {
     key: "checklistStructureInstalled",
     label: "Estrutura instalada",
+    group: "Instalação",
   },
   {
     key: "checklistModulesInstalled",
     label: "Módulos instalados",
+    group: "Instalação",
   },
   {
     key: "checklistInverterInstalled",
     label: "Inversor instalado",
+    group: "Instalação",
   },
   {
     key: "checklistDcCabling",
     label: "Cabeamento CC",
+    group: "Instalação",
   },
   {
     key: "checklistAcCabling",
     label: "Cabeamento CA",
+    group: "Instalação",
   },
   {
     key: "checklistCommissioning",
     label: "Comissionamento",
+    group: "Finalização",
   },
   {
     key: "checklistCustomerTraining",
     label: "Treinamento do cliente",
+    group: "Finalização",
   },
   {
     key: "checklistDelivered",
     label: "Entrega concluída",
+    group: "Finalização",
   },
 ];
+
+const CHECKLIST_GROUPS = [
+  "Documentação",
+  "Preparação",
+  "Instalação",
+  "Finalização",
+] as const;
 
 function formatDateInput(
   value: Date | string | null
@@ -462,6 +494,7 @@ function completeServiceOrderData(
 export function ProjectServiceOrderTab({
   project,
   onProjectChange,
+  onOpenProjectHistory,
 }: Props) {
   const [
     currentServiceOrder,
@@ -497,6 +530,14 @@ export function ProjectServiceOrderTab({
   const [message, setMessage] =
     useState<Message>(null);
 
+  const [dashboard, setDashboard] =
+    useState<ServiceOrderDashboard | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
+  const [previewPhoto, setPreviewPhoto] =
+    useState<ServiceOrderRecentPhoto | null>(null);
+
   useEffect(() => {
     setCurrentServiceOrder(
       project.serviceOrder
@@ -518,6 +559,50 @@ export function ProjectServiceOrderTab({
     setMessage(null);
   }, [project]);
 
+  const currentServiceOrderId = currentServiceOrder?.id;
+
+  useEffect(() => {
+    if (!currentServiceOrderId) {
+      setDashboard(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const serviceOrderId = currentServiceOrderId;
+
+    async function loadDashboard() {
+      setDashboardLoading(true);
+      setDashboardError(null);
+
+      try {
+        const response = await fetch(
+          `/api/os/dashboard?id=${encodeURIComponent(serviceOrderId)}`,
+          { signal: controller.signal }
+        );
+        const responseData = await response.json();
+
+        if (!response.ok) {
+          throw new Error(responseData.error ?? "Erro ao carregar painel.");
+        }
+
+        setDashboard(responseData as ServiceOrderDashboard);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setDashboardError(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível carregar o painel."
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) setDashboardLoading(false);
+      }
+    }
+
+    void loadDashboard();
+    return () => controller.abort();
+  }, [currentServiceOrderId, dashboardRefreshKey]);
+
   const checklistProgress =
     useMemo(() => {
       const completed =
@@ -532,6 +617,17 @@ export function ProjectServiceOrderTab({
           100
       );
     }, [checklist]);
+
+  const checklistCompleted = useMemo(
+    () => checklistDefinitions.filter((item) => checklist[item.key]).length,
+    [checklist]
+  );
+  const checklistTotal = checklistDefinitions.length;
+  const checklistPending = checklistTotal - checklistCompleted;
+  const deadline = getDeadlineStatus(
+    currentServiceOrder?.scheduledDate ?? null,
+    currentServiceOrder?.status ?? "ABERTA"
+  );
 
   function updateProjectWithServiceOrder(
   serviceOrder: ProjectServiceOrder
@@ -710,6 +806,7 @@ export function ProjectServiceOrderTab({
           ? "Ordem de Serviço criada com sucesso."
           : "Ordem de Serviço atualizada com sucesso.",
       });
+      setDashboardRefreshKey((current) => current + 1);
     } catch (error) {
       setMessage({
         type: "error",
@@ -788,6 +885,7 @@ export function ProjectServiceOrderTab({
         text:
           "Checklist atualizado com sucesso.",
       });
+      setDashboardRefreshKey((current) => current + 1);
     } catch (error) {
       setMessage({
         type: "error",
@@ -815,7 +913,37 @@ export function ProjectServiceOrderTab({
         </div>
       )}
 
-      <section className="rounded-3xl border border-white/[0.07] bg-zinc-900/60 p-6">
+      {currentServiceOrder ? (
+        <ServiceOrderOperationalDashboard
+          project={project}
+          serviceOrder={currentServiceOrder}
+          checklistProgress={checklistProgress}
+          checklistCompleted={checklistCompleted}
+          checklistTotal={checklistTotal}
+          checklistPending={checklistPending}
+          deadline={deadline}
+          dashboard={dashboard}
+          loading={dashboardLoading}
+          error={dashboardError}
+          onRetry={() => setDashboardRefreshKey((current) => current + 1)}
+          onOpenPhoto={setPreviewPhoto}
+          onOpenProjectHistory={onOpenProjectHistory}
+        />
+      ) : (
+        <NoServiceOrderState
+          projectTitle={project.title}
+          onCreate={() =>
+            document
+              .getElementById("os-data-section")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
+        />
+      )}
+
+      <section
+        id="os-data-section"
+        className="scroll-mt-36 rounded-3xl border border-white/[0.07] bg-zinc-900/60 p-6"
+      >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-500">
@@ -1021,7 +1149,10 @@ export function ProjectServiceOrderTab({
       </section>
 
       {currentServiceOrder && (
-        <section className="rounded-3xl border border-white/[0.07] bg-zinc-900/60 p-6">
+        <section
+          id="os-checklist-section"
+          className="scroll-mt-36 rounded-3xl border border-white/[0.07] bg-zinc-900/60 p-6"
+        >
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-500">
@@ -1047,9 +1178,19 @@ export function ProjectServiceOrderTab({
             />
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {checklistDefinitions.map(
-              (item) => {
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {CHECKLIST_GROUPS.map((group) => (
+              <div
+                key={group}
+                className="rounded-2xl border border-white/[0.06] bg-zinc-950/60 p-4"
+              >
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  {group}
+                </p>
+                <div className="space-y-2">
+                  {checklistDefinitions
+                    .filter((item) => item.group === group)
+                    .map((item) => {
                 const checked =
                   checklist[item.key];
 
@@ -1100,8 +1241,10 @@ export function ProjectServiceOrderTab({
                     </span>
                   </button>
                 );
-              }
-            )}
+                    })}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="mt-6 flex justify-end">
@@ -1128,13 +1271,16 @@ export function ProjectServiceOrderTab({
         </section>
       )}
 
-            {currentServiceOrder && (
+      {currentServiceOrder && (
         <>
-          <ProjectPhotosTab
-            serviceOrderId={
-              currentServiceOrder.id
-            }
-          />
+          <div id="os-photos-section" className="scroll-mt-36">
+            <ProjectPhotosTab
+              serviceOrderId={currentServiceOrder.id}
+              onPhotosChange={() =>
+                setDashboardRefreshKey((current) => current + 1)
+              }
+            />
+          </div>
 
           <section className="grid gap-4 sm:grid-cols-2">
             <InfoCard
@@ -1175,6 +1321,276 @@ export function ProjectServiceOrderTab({
           </section>
         </>
       )}
+
+      {previewPhoto && (
+        <RecentPhotoPreview
+          photo={previewPhoto}
+          onClose={() => setPreviewPhoto(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+type OperationalDashboardProps = {
+  project: ProjectListItem;
+  serviceOrder: ProjectServiceOrder;
+  checklistProgress: number;
+  checklistCompleted: number;
+  checklistTotal: number;
+  checklistPending: number;
+  deadline: ReturnType<typeof getDeadlineStatus>;
+  dashboard: ServiceOrderDashboard | null;
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  onOpenPhoto: (photo: ServiceOrderRecentPhoto) => void;
+  onOpenProjectHistory?: () => void;
+};
+
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
+
+function ServiceOrderOperationalDashboard({
+  project,
+  serviceOrder,
+  checklistProgress,
+  checklistCompleted,
+  checklistTotal,
+  checklistPending,
+  deadline,
+  dashboard,
+  loading,
+  error,
+  onRetry,
+  onOpenPhoto,
+  onOpenProjectHistory,
+}: OperationalDashboardProps) {
+  const statusClassName =
+    serviceOrder.status === "CONCLUIDA"
+      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+      : serviceOrder.status === "CANCELADA"
+        ? "border-red-500/20 bg-red-500/10 text-red-400"
+        : "border-orange-500/20 bg-orange-500/10 text-orange-400";
+
+  return (
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-3xl border border-white/[0.07] bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-500/[0.06]">
+        <div className="p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-500">
+                Painel operacional · {serviceOrder.number}
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">
+                {serviceOrder.title}
+              </h2>
+              <p className="mt-2 text-sm text-zinc-500">
+                {project.client.name} · {project.title}
+              </p>
+            </div>
+            <span className={`rounded-full border px-3 py-1.5 text-xs font-bold ${statusClassName}`}>
+              {getStatusLabel(serviceOrder.status)}
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <OperationalInfo icon={UserRound} label="Responsável" value={serviceOrder.responsible ?? "Não informado"} />
+            <OperationalInfo icon={CalendarDays} label="Data prevista" value={formatDisplayDate(serviceOrder.scheduledDate)} />
+            <OperationalInfo icon={MapPin} label="Endereço da execução" value={project.client.address ?? "Não informado"} />
+            <OperationalInfo icon={Phone} label="Telefone do cliente" value={project.client.phone ?? "Não informado"} />
+          </div>
+        </div>
+
+        <div className="border-t border-white/[0.07] bg-zinc-950/40 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <QuickAction icon={ClipboardCheck} label="Atualizar checklist" onClick={() => scrollToSection("os-checklist-section")} />
+            <QuickAction icon={Camera} label="Adicionar foto" onClick={() => scrollToSection("os-photos-section")} />
+            <a
+              href={`/api/os/${serviceOrder.id}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-900 px-3.5 py-2.5 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-400"
+            >
+              <FileText size={15} />
+              Gerar PDF
+              <ExternalLink size={13} />
+            </a>
+            <QuickAction icon={Pencil} label="Editar dados" onClick={() => scrollToSection("os-data-section")} />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <OperationalMetric icon={ClipboardCheck} label="Progresso" value={`${checklistProgress}%`} detail={`${checklistCompleted}/${checklistTotal} etapas`} highlight />
+        <OperationalMetric icon={CheckCircle2} label="Concluídos" value={String(checklistCompleted)} detail="Itens finalizados" />
+        <OperationalMetric icon={Clock3} label="Pendentes" value={String(checklistPending)} detail="Itens restantes" />
+        <OperationalMetric icon={CalendarDays} label="Prazo" value={deadline.label} detail={deadline.detail} valueClassName={deadline.className} />
+        <OperationalMetric icon={ImageIcon} label="Fotos" value={loading ? "..." : String(dashboard?.photoCount ?? 0)} detail="Evidências da OS" />
+        <OperationalMetric icon={FileText} label="Documentos" value={String(project.documents.length)} detail="Vinculados ao projeto" />
+      </section>
+
+      <section className="rounded-3xl border border-white/[0.07] bg-zinc-900/60 p-5 sm:p-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Checklist real</p>
+            <h3 className="mt-2 text-xl font-black text-white">Progresso da execução</h3>
+          </div>
+          <span className="text-3xl font-black text-orange-400">{checklistProgress}%</span>
+        </div>
+        <div className="mt-5 h-3 overflow-hidden rounded-full bg-zinc-950">
+          <div className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-500" style={{ width: `${checklistProgress}%` }} />
+        </div>
+        <p className="mt-3 text-sm text-zinc-500">
+          {checklistCompleted} de {checklistTotal} itens concluídos.
+        </p>
+      </section>
+
+      {error && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-500/20 bg-red-500/[0.06] p-4 text-sm text-red-300">
+          <span>{error}</span>
+          <button type="button" onClick={onRetry} className="font-bold hover:text-white">Tentar novamente</button>
+        </div>
+      )}
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <RecentActivities
+          events={dashboard?.recentEvents ?? []}
+          loading={loading}
+          onOpenProjectHistory={onOpenProjectHistory}
+        />
+        <RecentPhotos
+          photos={dashboard?.recentPhotos ?? []}
+          loading={loading}
+          onOpenPhoto={onOpenPhoto}
+        />
+      </section>
+    </div>
+  );
+}
+
+function OperationalInfo({ icon: Icon, label, value }: { icon: typeof Wrench; label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-zinc-950/60 p-4">
+      <Icon size={16} className="text-orange-400" />
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-zinc-600">{label}</p>
+      <p className="mt-1 line-clamp-2 text-sm font-semibold text-zinc-200">{value}</p>
+    </div>
+  );
+}
+
+function OperationalMetric({ icon: Icon, label, value, detail, highlight = false, valueClassName }: { icon: typeof Wrench; label: string; value: string; detail: string; highlight?: boolean; valueClassName?: string }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${highlight ? "border-orange-500/20 bg-orange-500/[0.06]" : "border-white/[0.07] bg-zinc-900/60"}`}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-600">{label}</p>
+        <Icon size={16} className={highlight ? "text-orange-400" : "text-zinc-600"} />
+      </div>
+      <p className={`mt-3 truncate text-xl font-black ${valueClassName ?? (highlight ? "text-orange-400" : "text-white")}`}>{value}</p>
+      <p className="mt-1 truncate text-xs text-zinc-600">{detail}</p>
+    </div>
+  );
+}
+
+function QuickAction({ icon: Icon, label, onClick }: { icon: typeof Wrench; label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-900 px-3.5 py-2.5 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-400">
+      <Icon size={15} />
+      {label}
+    </button>
+  );
+}
+
+function RecentActivities({ events, loading, onOpenProjectHistory }: { events: ServiceOrderDashboard["recentEvents"]; loading: boolean; onOpenProjectHistory?: () => void }) {
+  return (
+    <div className="rounded-3xl border border-white/[0.07] bg-zinc-900/60 p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-500">Atividades</p>
+          <h3 className="mt-2 text-lg font-black text-white">Eventos recentes</h3>
+        </div>
+        {onOpenProjectHistory && (
+          <button type="button" onClick={onOpenProjectHistory} className="text-xs font-semibold text-zinc-500 transition hover:text-orange-400">Ver histórico completo</button>
+        )}
+      </div>
+      <div className="mt-5 space-y-3">
+        {loading ? (
+          <LoaderCircle className="mx-auto my-10 animate-spin text-orange-400" />
+        ) : events.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-white/[0.08] p-8 text-center text-sm text-zinc-600">Nenhuma atividade registrada.</p>
+        ) : (
+          events.map((event) => (
+            <div key={event.id} className="flex gap-3 rounded-xl border border-white/[0.05] bg-zinc-950/60 p-3">
+              <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-orange-500" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white">{event.title}</p>
+                {event.description && <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{event.description}</p>}
+                <p className="mt-2 text-[11px] text-zinc-700">{formatDisplayDate(event.createdAt)}</p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RecentPhotos({ photos, loading, onOpenPhoto }: { photos: ServiceOrderDashboard["recentPhotos"]; loading: boolean; onOpenPhoto: (photo: ServiceOrderRecentPhoto) => void }) {
+  return (
+    <div className="rounded-3xl border border-white/[0.07] bg-zinc-900/60 p-5 sm:p-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-500">Evidências</p>
+      <h3 className="mt-2 text-lg font-black text-white">Fotos recentes</h3>
+      {loading ? (
+        <LoaderCircle className="mx-auto my-14 animate-spin text-orange-400" />
+      ) : photos.length === 0 ? (
+        <p className="mt-5 rounded-2xl border border-dashed border-white/[0.08] p-8 text-center text-sm text-zinc-600">Nenhuma foto registrada.</p>
+      ) : (
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          {photos.map((photo) => (
+            <button key={photo.id} type="button" onClick={() => onOpenPhoto(photo)} className="group overflow-hidden rounded-2xl border border-white/[0.07] bg-zinc-950 text-left transition hover:border-orange-500/30">
+              <div className="relative aspect-video overflow-hidden">
+                <Image src={`/api/os/photos?photoId=${encodeURIComponent(photo.id)}`} alt={photo.name} fill unoptimized className="object-cover transition duration-300 group-hover:scale-105" />
+              </div>
+              <div className="p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-orange-400">{photo.category}</p>
+                <p className="mt-1 truncate text-xs text-zinc-600">{formatDisplayDate(photo.createdAt)}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NoServiceOrderState({ projectTitle, onCreate }: { projectTitle: string; onCreate: () => void }) {
+  return (
+    <section className="rounded-3xl border border-dashed border-orange-500/20 bg-gradient-to-br from-zinc-900 to-orange-500/[0.05] p-10 text-center sm:p-14">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-400"><Wrench size={28} /></div>
+      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-orange-500">Execução operacional</p>
+      <h2 className="mt-2 text-2xl font-black text-white">Nenhuma Ordem de Serviço criada</h2>
+      <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-500">Crie a OS de {projectTitle} para controlar checklist, equipe, fotos, prazo e documentação da execução.</p>
+      <button type="button" onClick={onCreate} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-400"><Wrench size={17} />Criar Ordem de Serviço</button>
+    </section>
+  );
+}
+
+function RecentPhotoPreview({ photo, onClose }: { photo: ServiceOrderRecentPhoto; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-white/[0.1] bg-zinc-950">
+        <div className="flex items-center justify-between border-b border-white/[0.07] p-4">
+          <div><p className="font-bold text-white">{photo.name}</p><p className="mt-1 text-xs text-zinc-600">{photo.category} · {formatDisplayDate(photo.createdAt)}</p></div>
+          <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:bg-red-500/10 hover:text-red-400" aria-label="Fechar foto"><X size={19} /></button>
+        </div>
+        <div className="flex max-h-[78vh] items-center justify-center bg-black p-4">
+          <Image src={`/api/os/photos?photoId=${encodeURIComponent(photo.id)}`} alt={photo.name} width={1600} height={1000} unoptimized className="max-h-[72vh] w-auto max-w-full rounded-xl object-contain" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -1287,4 +1703,40 @@ function InfoCard({
       </p>
     </div>
   );
+}
+
+function formatDisplayDate(value: Date | string | null) {
+  if (!value) return "Não informada";
+  return new Intl.DateTimeFormat("pt-BR").format(new Date(value));
+}
+
+function getDeadlineStatus(
+  scheduledDate: Date | string | null,
+  status: string
+) {
+  if (status === "CONCLUIDA") {
+    return { label: "Concluída", detail: "Execução finalizada", className: "text-emerald-400" };
+  }
+
+  if (!scheduledDate) {
+    return { label: "Sem data definida", detail: "Agendamento pendente", className: "text-zinc-400" };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const scheduled = new Date(scheduledDate);
+  scheduled.setHours(0, 0, 0, 0);
+  const days = Math.round(
+    (scheduled.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (days < 0) {
+    return { label: "Atrasada", detail: `${Math.abs(days)} dia(s) de atraso`, className: "text-red-400" };
+  }
+
+  if (days === 0) {
+    return { label: "Vence hoje", detail: "Execução prevista para hoje", className: "text-amber-400" };
+  }
+
+  return { label: "No prazo", detail: `${days} dia(s) restante(s)`, className: "text-sky-400" };
 }

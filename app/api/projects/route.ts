@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   listCompanyProjects,
   updateCompanyProject,
+  deleteCompanyProject,
 } from "@/services/projects.service";
 
 export async function GET() {
@@ -79,5 +80,17 @@ export async function POST(
         status: 500,
       }
     );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const id = new URL(request.url).searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Projeto obrigatório." }, { status: 400 });
+    await deleteCompanyProject(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao excluir projeto.";
+    return NextResponse.json({ error: message }, { status: message.includes("vinculado") ? 409 : 400 });
   }
 }

@@ -2,18 +2,25 @@ import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
 import {
   findProjectById,
+  findProjectDependencies,
+  deleteProject,
   findProjectsByCompany,
   updateProject,
   type UpdateProjectData,
 } from "@/repositories/projects.repository";
 import { registerProjectEvent } from "@/services/project-timeline.service";
+import { toProjectDocumentResponses } from "@/services/project-documents.service";
 
 export async function listCompanyProjects() {
   const companyId =
     await getCurrentCompanyId();
 
-  return findProjectsByCompany(
-    companyId
+  const projects = await findProjectsByCompany(companyId);
+  return Promise.all(
+    projects.map(async (project) => ({
+      ...project,
+      documents: await toProjectDocumentResponses(project.documents, companyId),
+    }))
   );
 }
 
@@ -63,4 +70,21 @@ export async function updateCompanyProject(
   }
 
   return updatedProject;
+}
+
+export async function deleteCompanyProject(id: string) {
+  const companyId = await getCurrentCompanyId();
+  const project = await findProjectDependencies(id, companyId);
+  if (!project) throw new Error("Projeto não encontrado.");
+
+  const dependencies = [
+    project.serviceOrder ? "uma Ordem de Serviço" : null,
+    project.financial ? "registros financeiros" : null,
+    project._count.documents ? `${project._count.documents} documento(s)` : null,
+  ].filter(Boolean);
+
+  if (dependencies.length) {
+    throw new Error(`Este projeto possui ${dependencies.join(", ")} vinculado(s). Remova ou cancele esses vínculos antes de excluir.`);
+  }
+  return deleteProject(id, companyId);
 }

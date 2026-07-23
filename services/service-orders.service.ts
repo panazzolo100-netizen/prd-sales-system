@@ -5,15 +5,29 @@ import {
   findProjectForServiceOrder,
   findServiceOrderChecklist,
   findServiceOrderForPdf,
+  findServiceOrderDashboard,
   findServiceOrderForUpdate,
-  findServiceOrderSignatures,
   findServiceOrdersByCompany,
   updateServiceOrderChecklist,
   updateServiceOrderRepository,
-  updateServiceOrderSignatures,
 } from "@/repositories/service-orders.repository";
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
 import { registerServiceOrderEvent } from "@/services/service-order-timeline.service";
+import { isSolarService, serviceTypeLabel } from "@/lib/opportunity-service-types";
+import {
+  prepareServiceDetails,
+  prepareTechnicalDetailRows,
+  resolveServiceType,
+} from "@/lib/service-technical-details";
+import {
+  toServiceOrderPhotoResponse,
+  toServiceOrderPhotoResponses,
+} from "@/services/service-order-photos.service";
+import {
+  createSignatureAccessUrl,
+  saveServiceOrderSignatures,
+} from "@/services/service-order-signatures.service";
 
 type ChecklistData = {
   checklistArt: boolean;
@@ -104,8 +118,9 @@ export async function updateServiceOrderData(data: {
   materials?: string | null;
   notes?: string | null;
 }) {
+  const companyId = await getCurrentCompanyId();
   const current =
-    await findServiceOrderForUpdate(data.id);
+    await findServiceOrderForUpdate(data.id, companyId);
 
   if (!current) {
     throw new Error(
@@ -126,6 +141,7 @@ export async function updateServiceOrderData(data: {
   const updated =
     await updateServiceOrderRepository(
       data.id,
+      companyId,
       {
         status: data.status,
         responsible,
@@ -201,6 +217,7 @@ export async function updateServiceOrderData(data: {
   ) {
     await completeServiceOrderProject(
       current.projectId
+      , companyId
     );
 
     await registerServiceOrderEvent({
@@ -228,8 +245,9 @@ export async function updateServiceOrderChecklistData(
   id: string,
   checklist: ChecklistData
 ) {
+  const companyId = await getCurrentCompanyId();
   const current =
-    await findServiceOrderChecklist(id);
+    await findServiceOrderChecklist(id, companyId);
 
   if (!current) {
     throw new Error(
@@ -241,7 +259,7 @@ export async function updateServiceOrderChecklistData(
     Object.values(checklist).every(Boolean);
 
   const updated =
-    await updateServiceOrderChecklist(id, {
+    await updateServiceOrderChecklist(id, companyId, {
       ...checklist,
       status: completed
         ? "CONCLUIDA"
@@ -277,6 +295,7 @@ export async function updateServiceOrderChecklistData(
   ) {
     await completeServiceOrderProject(
       current.projectId
+      , companyId
     );
 
     await registerServiceOrderEvent({
@@ -310,90 +329,15 @@ export async function updateServiceOrderSignaturesData(
     technicianSignature?: string | null;
   }
 ) {
-  const current =
-    await findServiceOrderSignatures(
-      data.id
-    );
-
-  if (!current) {
-    throw new Error(
-      "Ordem de Serviço não encontrada."
-    );
-  }
-
-  const customerName =
-    data.customerName?.trim() || null;
-
-  const customerDocument =
-    data.customerDocument?.trim() || null;
-
-  const customerSignature =
-    data.customerSignature || null;
-
-  const technicianName =
-    data.technicianName?.trim() || null;
-
-  const technicianSignature =
-    data.technicianSignature || null;
-
-  const hasSignature =
-    Boolean(customerSignature) ||
-    Boolean(technicianSignature);
-
-  const updated =
-    await updateServiceOrderSignatures(
-      data.id,
-      {
-        customerName,
-        customerDocument,
-        customerSignature,
-        technicianName,
-        technicianSignature,
-        signedAt: hasSignature
-          ? current.signedAt ??
-            new Date()
-          : null,
-      }
-    );
-
-  if (
-    customerSignature &&
-    customerSignature !==
-      current.customerSignature
-  ) {
-    await registerServiceOrderEvent({
-      serviceOrderId: data.id,
-      type: "CLIENTE_ASSINOU",
-      title: "Cliente assinou a OS",
-      description:
-        customerName ??
-        "Assinatura do cliente registrada.",
-    });
-  }
-
-  if (
-    technicianSignature &&
-    technicianSignature !==
-      current.technicianSignature
-  ) {
-    await registerServiceOrderEvent({
-      serviceOrderId: data.id,
-      type: "TECNICO_ASSINOU",
-      title: "Técnico assinou a OS",
-      description:
-        technicianName ??
-        "Assinatura do técnico registrada.",
-    });
-  }
-
-  return updated;
+  return saveServiceOrderSignatures(data);
 }
 
 export async function getServiceOrderPdfData(
   id: string
 ) {
+  const companyId = await getCurrentCompanyId();
   const serviceOrder =
-    await findServiceOrderForPdf(id);
+    await findServiceOrderForPdf(id, companyId);
 
   if (!serviceOrder) {
     throw new Error(
@@ -401,7 +345,70 @@ export async function getServiceOrderPdfData(
     );
   }
 
-  return serviceOrder;
+  const serviceType = resolveServiceType({
+    leadServiceType: serviceOrder.project.client.lead?.serviceType,
+    projectServiceType: serviceOrder.project.serviceType,
+  });
+  const details = prepareServiceDetails({
+    serviceType,
+    serviceDetails: serviceOrder.project.client.lead?.serviceDetails,
+    legacyEngineering: serviceOrder.project.client.lead?.engineering,
+  });
+  const legacyChecklist = [
+    ["ART emitida", serviceOrder.checklistArt],
+    ["Projeto aprovado", serviceOrder.checklistProjectApproved],
+    ["Materiais separados", serviceOrder.checklistMaterialsSeparated],
+    ["Estrutura instalada", serviceOrder.checklistStructureInstalled],
+    ["Módulos instalados", serviceOrder.checklistModulesInstalled],
+    ["Inversor instalado", serviceOrder.checklistInverterInstalled],
+    ["Cabeamento CC", serviceOrder.checklistDcCabling],
+    ["Cabeamento CA", serviceOrder.checklistAcCabling],
+    ["Comissionamento", serviceOrder.checklistCommissioning],
+    ["Treinamento do cliente", serviceOrder.checklistCustomerTraining],
+    ["Entrega concluída", serviceOrder.checklistDelivered],
+  ] as const;
+  const checklist = isSolarService(serviceType)
+    ? legacyChecklist.map(([description, completed]) => ({
+        description,
+        status: completed ? "CONCLUIDO" : "PENDENTE",
+        observation: null,
+        responsible: null,
+        completedAt: null,
+      }))
+    : serviceOrder.project.stages.map((stage) => ({
+        description: stage.title,
+        status: stage.completed ? "CONCLUIDO" : "PENDENTE",
+        observation: stage.notes,
+        responsible: stage.responsible,
+        completedAt: null,
+      }));
+  const completedStages = serviceOrder.project.stages
+    .filter((stage) => stage.completed)
+    .map((stage) => stage.title);
+
+  return {
+    ...serviceOrder,
+    photos: await toServiceOrderPhotoResponses(serviceOrder.photos, companyId),
+    customerSignatureStorageReference: serviceOrder.customerSignature,
+    technicianSignatureStorageReference: serviceOrder.technicianSignature,
+    customerSignature: await createSignatureAccessUrl(
+      serviceOrder.customerSignature,
+      companyId,
+      serviceOrder.id
+    ),
+    technicianSignature: await createSignatureAccessUrl(
+      serviceOrder.technicianSignature,
+      companyId,
+      serviceOrder.id
+    ),
+    serviceType,
+    serviceTypeLabel: serviceTypeLabel(serviceType),
+    technicalDetails: prepareTechnicalDetailRows(serviceType, details),
+    checklist,
+    executedServices:
+      completedStages.length > 0 ? completedStages.join("; ") : null,
+    documentsCount: serviceOrder.project._count.documents,
+  };
 }
 
 export async function getPublicServiceOrderValidationData(
@@ -458,9 +465,9 @@ export async function getPublicServiceOrderValidationData(
       serviceOrder.checklistDelivered,
 
     customerSignature:
-      serviceOrder.customerSignature,
+      serviceOrder.customerSignature ? "present" : null,
     technicianSignature:
-      serviceOrder.technicianSignature,
+      serviceOrder.technicianSignature ? "present" : null,
     signedAt: serviceOrder.signedAt,
 
     photosCount:
@@ -476,5 +483,22 @@ export async function getPublicServiceOrderValidationData(
             .name,
       },
     },
+  };
+}
+
+export async function getCompanyServiceOrderDashboard(id: string) {
+  const companyId = await getCurrentCompanyId();
+  const dashboard = await findServiceOrderDashboard(id, companyId);
+
+  if (!dashboard) {
+    throw new Error("Ordem de Serviço não encontrada.");
+  }
+
+  return {
+    photoCount: dashboard._count.photos,
+    recentPhotos: await Promise.all(
+      dashboard.photos.map((photo) => toServiceOrderPhotoResponse(photo, companyId))
+    ),
+    recentEvents: dashboard.timeline,
   };
 }

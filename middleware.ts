@@ -47,16 +47,23 @@ export async function middleware(
   const pathname =
     request.nextUrl.pathname;
 
-  const isLoginPage =
-    pathname.startsWith("/login");
+  const isPublicAuthPage = [
+    "/login",
+    "/esqueci-minha-senha",
+    "/redefinir-senha",
+  ].some(
+    (route) =>
+      pathname === route ||
+      pathname.startsWith(`${route}/`)
+  );
 
-  if (!user && !isLoginPage) {
+  if (!user && !isPublicAuthPage) {
     return NextResponse.redirect(
       new URL("/login", request.url)
     );
   }
 
-  if (user && isLoginPage) {
+  if (user && pathname === "/login") {
     return NextResponse.redirect(
       new URL("/", request.url)
     );

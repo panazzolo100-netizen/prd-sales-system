@@ -1,6 +1,8 @@
 import { revalidatePath } from "next/cache";
 
 import { AppLayout } from "@/components/layout/AppLayout";
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { MiniBarChart, SectionCard } from "@/components/ui/erp";
 import {
   cashFlowSummary,
   createCashFlow,
@@ -8,8 +10,6 @@ import {
   removeCashFlow,
   updateCashFlow,
 } from "@/services/cash-flow.service";
-
-const COMPANY_ID = "default-company";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -40,6 +40,8 @@ function parseNumber(value: FormDataEntryValue | null) {
 async function createEntry(formData: FormData) {
   "use server";
 
+  const companyId = await getCurrentCompanyId();
+
   const description = String(
     formData.get("description") ?? ""
   ).trim();
@@ -59,6 +61,7 @@ async function createEntry(formData: FormData) {
   const dueDateValue = String(
     formData.get("dueDate") ?? ""
   ).trim();
+  const paidAtValue = String(formData.get("paidAt") ?? "").trim();
 
   const status = String(
     formData.get("status") ?? "PENDENTE"
@@ -88,13 +91,10 @@ async function createEntry(formData: FormData) {
     dueDate: dueDateValue
       ? new Date(`${dueDateValue}T12:00:00`)
       : null,
-    paidAt:
-      status === "PAGO"
-        ? new Date()
-        : null,
+    paidAt: status === "PAGO" ? (paidAtValue ? new Date(`${paidAtValue}T12:00:00`) : new Date()) : null,
     status,
     notes: notes || null,
-    companyId: COMPANY_ID,
+    companyId,
   });
 
   revalidatePath(
@@ -106,6 +106,8 @@ async function createEntry(formData: FormData) {
 
 async function updateEntry(formData: FormData) {
   "use server";
+
+  const companyId = await getCurrentCompanyId();
 
   const id = String(
     formData.get("id") ?? ""
@@ -130,6 +132,7 @@ async function updateEntry(formData: FormData) {
   const dueDateValue = String(
     formData.get("dueDate") ?? ""
   ).trim();
+  const paidAtValue = String(formData.get("paidAt") ?? "").trim();
 
   const status = String(
     formData.get("status") ?? "PENDENTE"
@@ -147,7 +150,7 @@ async function updateEntry(formData: FormData) {
 
   await updateCashFlow({
     id,
-    companyId: COMPANY_ID,
+    companyId,
     description,
     type,
     category: category || null,
@@ -155,10 +158,7 @@ async function updateEntry(formData: FormData) {
     dueDate: dueDateValue
       ? new Date(`${dueDateValue}T12:00:00`)
       : null,
-    paidAt:
-      status === "PAGO"
-        ? new Date()
-        : null,
+    paidAt: status === "PAGO" ? (paidAtValue ? new Date(`${paidAtValue}T12:00:00`) : new Date()) : null,
     status,
     notes: notes || null,
   });
@@ -173,6 +173,8 @@ async function updateEntry(formData: FormData) {
 async function deleteEntry(formData: FormData) {
   "use server";
 
+  const companyId = await getCurrentCompanyId();
+
   const id = String(
     formData.get("id") ?? ""
   ).trim();
@@ -185,7 +187,7 @@ async function deleteEntry(formData: FormData) {
 
   await removeCashFlow(
     id,
-    COMPANY_ID
+    companyId
   );
 
   revalidatePath(
@@ -195,15 +197,17 @@ async function deleteEntry(formData: FormData) {
   revalidatePath("/");
 }
 
-export default async function CashFlowPage() {
+export default async function CashFlowPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; status?: string; from?: string; to?: string }> }) {
+  const filters = await searchParams;
+  const companyId = await getCurrentCompanyId();
   const [cashFlow, summary] =
     await Promise.all([
       listCompanyCashFlow(
-        COMPANY_ID
+        companyId
       ),
 
       cashFlowSummary(
-        COMPANY_ID
+        companyId
       ),
     ]);
 
@@ -236,6 +240,12 @@ export default async function CashFlowPage() {
   const balance =
     summary.entries -
     summary.expenses;
+  const filteredCashFlow = cashFlow.filter((item) => {
+    const term = filters.q?.trim().toLowerCase();
+    const date = item.dueDate ?? item.createdAt;
+    return (!term || item.description.toLowerCase().includes(term) || item.category?.toLowerCase().includes(term)) && (!filters.type || item.type === filters.type) && (!filters.status || item.status === filters.status) && (!filters.from || date >= new Date(`${filters.from}T00:00:00`)) && (!filters.to || date <= new Date(`${filters.to}T23:59:59`));
+  });
+  const chartData = Object.values(cashFlow.reduce<Record<string, { label: string; primary: number; secondary: number }>>((accumulator, item) => { const date = item.paidAt ?? item.dueDate ?? item.createdAt; const key = `${date.getFullYear()}-${date.getMonth()}`; accumulator[key] ??= { label: date.toLocaleDateString("pt-BR", { month: "short" }), primary: 0, secondary: 0 }; if (item.type === "ENTRADA") accumulator[key].primary += item.value; else accumulator[key].secondary += item.value; return accumulator; }, {})).slice(-6);
 
   return (
     <AppLayout>
@@ -295,6 +305,17 @@ export default async function CashFlowPage() {
             valueClass="text-red-400"
           />
         </div>
+
+        <form className="grid gap-3 rounded-2xl border border-white/[0.07] bg-zinc-900 p-4 md:grid-cols-2 xl:grid-cols-6">
+          <input name="q" defaultValue={filters.q} placeholder="Buscar descrição..." className={inputClass} />
+          <select name="type" defaultValue={filters.type ?? ""} className={inputClass}><option value="">Todos os tipos</option><option value="ENTRADA">Entradas</option><option value="SAIDA">Saídas</option></select>
+          <select name="status" defaultValue={filters.status ?? ""} className={inputClass}><option value="">Todos os status</option><option value="PENDENTE">Previstos</option><option value="PAGO">Pagos</option></select>
+          <input type="date" name="from" defaultValue={filters.from} className={inputClass} />
+          <input type="date" name="to" defaultValue={filters.to} className={inputClass} />
+          <button className="rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white">Filtrar</button>
+        </form>
+
+        {chartData.length > 0 && <SectionCard title="Entradas x saídas" description="Movimentação mensal com dados realizados e previstos."><div className="mb-3 flex gap-5 text-xs font-semibold"><span className="flex items-center gap-2 text-zinc-500"><i className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Entradas</span><span className="flex items-center gap-2 text-zinc-500"><i className="h-2.5 w-2.5 rounded-full bg-red-500" />Saídas</span></div><MiniBarChart data={chartData} /></SectionCard>}
 
         <details className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
           <summary className="cursor-pointer list-none text-xl font-bold text-white">
@@ -377,6 +398,7 @@ export default async function CashFlowPage() {
                   </option>
                 </select>
               </Field>
+              <Field label="Pagamento (opcional)"><input name="paidAt" type="date" className={inputClass} /></Field>
             </div>
 
             <div className="mt-5">
@@ -399,7 +421,7 @@ export default async function CashFlowPage() {
         </details>
 
         <div className="space-y-5">
-          {cashFlow.map((item) => (
+          {filteredCashFlow.map((item) => (
             <form
               key={item.id}
               action={updateEntry}
@@ -536,6 +558,7 @@ export default async function CashFlowPage() {
                     </option>
                   </select>
                 </Field>
+                <Field label="Pagamento"><input name="paidAt" type="date" defaultValue={item.paidAt ? item.paidAt.toISOString().slice(0, 10) : ""} className={inputClass} /></Field>
               </div>
 
               <div className="mt-5">
@@ -592,7 +615,7 @@ export default async function CashFlowPage() {
             </form>
           ))}
 
-          {cashFlow.length === 0 && (
+          {filteredCashFlow.length === 0 && (
             <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900 p-12 text-center">
               <h2 className="text-xl font-bold text-white">
                 Nenhum lançamento

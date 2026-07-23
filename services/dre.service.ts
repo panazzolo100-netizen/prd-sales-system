@@ -1,10 +1,11 @@
-import { findCompanyCashFlow } from "@/repositories/cash-flow.repository";
+import { findCompanyCashFlowByPeriod } from "@/repositories/cash-flow.repository";
 
 export async function getDreData(
-  companyId: string
+  companyId: string,
+  period?: { from?: Date; to?: Date }
 ) {
   const movements =
-    await findCompanyCashFlow(companyId);
+    await findCompanyCashFlowByPeriod(companyId, period?.from, period?.to);
 
   const paidMovements = movements.filter(
     (item) => item.status === "PAGO"
@@ -57,11 +58,21 @@ export async function getDreData(
     }))
     .sort((a, b) => b.value - a.value);
 
+  const monthly = paidMovements.reduce<Record<string, { revenue: number; expenses: number }>>((accumulator, item) => {
+    const date = item.paidAt ?? item.createdAt;
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    accumulator[key] ??= { revenue: 0, expenses: 0 };
+    if (item.type === "ENTRADA") accumulator[key].revenue += item.value;
+    else accumulator[key].expenses += item.value;
+    return accumulator;
+  }, {});
+
   return {
     revenue,
     expenses,
     result,
     margin,
     categories,
+    monthly: Object.entries(monthly).map(([month, values]) => ({ month, ...values })).slice(-6),
   };
 }

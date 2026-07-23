@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
+import { CompanyLogo } from "@/components/layout/CompanyLogo";
 
 const grupos = [
   {
@@ -185,7 +186,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`sticky top-0 flex h-screen shrink-0 flex-col border-r border-white/[0.06] bg-[#0b0b0d] transition-all duration-300 ${
+      className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-white/[0.06] bg-[#0b0b0d] transition-all duration-300 lg:flex ${
         collapsed ? "w-[88px]" : "w-72"
       }`}
     >
@@ -206,11 +207,7 @@ export function Sidebar() {
               title="Expandir menu"
               className="relative flex h-12 w-full items-center justify-center rounded-xl transition hover:bg-white/[0.05]"
             >
-              <img
-  src="/logo-prd.png"
-  alt="PRD Engenharia"
-  className="h-10 w-10 object-contain"
-/>
+              <CompanyLogo collapsed />
             </button>
           ) : (
             <div className="relative">
@@ -219,11 +216,7 @@ export function Sidebar() {
                   href="/"
                   className="flex min-w-0 flex-1 items-center"
                 >
-                  <img
-  src="/logo-prd.png"
-  alt="PRD Engenharia"
-  className="h-auto max-h-16 w-auto max-w-[175px] object-contain object-left"
-/>
+                  <CompanyLogo collapsed={false} />
                 </Link>
 
                 <button

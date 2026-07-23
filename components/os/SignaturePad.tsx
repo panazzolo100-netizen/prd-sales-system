@@ -23,7 +23,8 @@ export function SignaturePad({
   const drawingRef = useRef(false);
 
   const [signature, setSignature] =
-    useState(defaultValue ?? "");
+    useState("");
+  const [action, setAction] = useState<"unchanged" | "replace" | "clear">("unchanged");
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -148,6 +149,7 @@ export function SignaturePad({
     );
 
     setSignature(value);
+    setAction("replace");
   }
 
   function clearSignature() {
@@ -166,6 +168,7 @@ export function SignaturePad({
     );
 
     setSignature("");
+    setAction("clear");
   }
 
   return (
@@ -200,6 +203,7 @@ export function SignaturePad({
         name={name}
         value={signature}
       />
+      <input type="hidden" name={`${name}Action`} value={action} />
 
       <p className="mt-3 text-sm text-zinc-500">
         Assine com o mouse ou com o dedo.

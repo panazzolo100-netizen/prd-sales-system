@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   CalendarDays,
   ChevronDown,
-  Command,
   Plus,
-  Search,
   Settings,
 } from "lucide-react";
+import { GlobalSearch } from "./GlobalSearch";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { MobileNav } from "@/components/layout/MobileNav";
 
 const pageTitles: Record<
   string,
@@ -73,6 +73,18 @@ const pageTitles: Record<
     title: "DRE",
     description: "Demonstrativo de resultados da empresa.",
   },
+  "/relatorios": {
+    title: "Relatórios",
+    description: "Indicadores consolidados da operação.",
+  },
+  "/configuracoes": {
+    title: "Configurações",
+    description: "Conta, empresa e preferências do ERP.",
+  },
+  "/notificacoes": {
+    title: "Notificações",
+    description: "Prazos e pendências da operação.",
+  },
 };
 
 function getPageInformation(pathname: string) {
@@ -108,8 +120,9 @@ export function Topbar() {
     getPageInformation(pathname);
 
   return (
-    <header className="sticky top-0 z-30 mb-8 border-b border-white/[0.06] bg-[#0b0b0d]/85 px-1 py-4 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 mb-6 border-b border-white/[0.06] bg-[#0b0b0d]/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:mb-8 lg:px-8">
       <div className="flex items-center justify-between gap-5">
+        <MobileNav />
         <div className="min-w-0">
           <p className="truncate text-lg font-bold text-white">
             {pageInformation.title}
@@ -121,24 +134,7 @@ export function Topbar() {
         </div>
 
         <div className="flex flex-1 items-center justify-end gap-3">
-          <div className="relative hidden w-full max-w-md xl:block">
-            <Search
-              size={18}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"
-            />
-
-            <input
-              type="search"
-              placeholder="Pesquisar clientes, projetos ou OS..."
-              className="h-11 w-full rounded-xl border border-white/[0.07] bg-white/[0.035] pl-11 pr-20 text-sm text-white outline-none transition placeholder:text-zinc-600 hover:border-white/[0.12] focus:border-orange-500/60 focus:bg-white/[0.05] focus:ring-4 focus:ring-orange-500/10"
-            />
-
-            <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md border border-white/[0.07] bg-black/20 px-2 py-1 text-[10px] font-semibold text-zinc-600">
-              <Command size={11} />
-
-              <span>K</span>
-            </div>
-          </div>
+          <GlobalSearch />
 
           <Link
             href="/agenda"
@@ -148,15 +144,7 @@ export function Topbar() {
             <CalendarDays size={18} />
           </Link>
 
-          <button
-            type="button"
-            title="Notificações"
-            className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-zinc-500 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-400"
-          >
-            <Bell size={18} />
-
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-[#0b0b0d] bg-red-500" />
-          </button>
+          <NotificationCenter />
 
           <Link
             href="/configuracoes"

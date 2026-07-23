@@ -11,6 +11,7 @@ import {
   FileText,
   Search,
   Star,
+  Trash2,
   Upload,
   UserRound,
   X,
@@ -65,11 +66,14 @@ export function ProjectDocumentsTab({
     useState<DocumentCategoryFilter>("TODOS");
   const [sort, setSort] = useState<DocumentSort>("RECENT");
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<ProjectDocumentCategory>("OUTRO");
   const [previewDocument, setPreviewDocument] =
     useState<ProjectDocumentItem | null>(null);
   const [favoriteLoadingId, setFavoriteLoadingId] =
     useState<string | null>(null);
   const [favoriteError, setFavoriteError] = useState<string | null>(null);
+  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+  const [deleteFeedback, setDeleteFeedback] = useState<string | null>(null);
 
   const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
@@ -146,6 +150,37 @@ export function ProjectDocumentsTab({
     }
   }
 
+  async function deleteDocument(document: ProjectDocumentItem) {
+    if (deleteLoadingId) return;
+    if (!window.confirm(`Excluir o documento “${document.name}”? Esta ação não pode ser desfeita.`)) return;
+
+    setDeleteLoadingId(document.id);
+    setFavoriteError(null);
+    setDeleteFeedback(null);
+
+    try {
+      const response = await fetch(
+        `/api/projects/documents?id=${encodeURIComponent(document.id)}`,
+        { method: "DELETE" }
+      );
+      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.error ?? "Erro ao excluir documento.");
+      }
+      onDocumentsChange(documents.filter((item) => item.id !== document.id));
+      if (previewDocument?.id === document.id) setPreviewDocument(null);
+      setDeleteFeedback(`${document.name} foi excluído com sucesso.`);
+    } catch (error) {
+      setFavoriteError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir o documento."
+      );
+    } finally {
+      setDeleteLoadingId(null);
+    }
+  }
+
   const hasFilters = search.trim().length > 0 || category !== "TODOS";
 
   return (
@@ -157,7 +192,7 @@ export function ProjectDocumentsTab({
               Centro de documentos
             </p>
             <h2 className="mt-2 text-2xl font-black text-white">
-              Arquivos do projeto
+              Documentos do Projeto
             </h2>
             <p className="mt-2 text-sm text-zinc-500">
               {documents.length} documento(s) · {favoriteCount} favorito(s)
@@ -166,12 +201,16 @@ export function ProjectDocumentsTab({
 
           <button
             type="button"
-            onClick={() => setShowUpload((current) => !current)}
+            onClick={() => { setUploadCategory("OUTRO"); setShowUpload(true); }}
             className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-400"
           >
             <Upload size={17} />
-            Enviar documento
+            Adicionar documento
           </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
+          {PROJECT_DOCUMENT_CATEGORIES.map((item) => <button key={item.value} type="button" onClick={() => { setUploadCategory(item.value); setShowUpload(true); }} className="rounded-lg border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 transition hover:border-orange-500/30 hover:text-orange-400">{item.label}</button>)}
         </div>
 
         <div className="mt-6 grid gap-3 lg:grid-cols-[minmax(240px,1fr)_210px_190px]">
@@ -219,16 +258,19 @@ export function ProjectDocumentsTab({
       </section>
 
       {showUpload && (
-        <DocumentUpload
-          projectId={projectId}
-          onUploaded={handleUploaded}
-          onCancel={() => setShowUpload(false)}
-        />
+        <div className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowUpload(false); }}>
+          <div className="w-full max-w-3xl"><DocumentUpload key={uploadCategory} projectId={projectId} type={uploadCategory} onUploaded={handleUploaded} onCancel={() => setShowUpload(false)} /></div>
+        </div>
       )}
 
       {favoriteError && (
         <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
           {favoriteError}
+        </p>
+      )}
+      {deleteFeedback && (
+        <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+          {deleteFeedback}
         </p>
       )}
 
@@ -244,7 +286,9 @@ export function ProjectDocumentsTab({
               key={document.id}
               document={document}
               favoriteLoading={favoriteLoadingId === document.id}
+              deleteLoading={deleteLoadingId === document.id}
               onToggleFavorite={toggleFavorite}
+              onDelete={deleteDocument}
               onPreview={setPreviewDocument}
             />
           ))}
@@ -264,19 +308,24 @@ export function ProjectDocumentsTab({
 type DocumentCardProps = {
   document: ProjectDocumentItem;
   favoriteLoading: boolean;
+  deleteLoading: boolean;
   onToggleFavorite: (document: ProjectDocumentItem) => Promise<void>;
+  onDelete: (document: ProjectDocumentItem) => Promise<void>;
   onPreview: (document: ProjectDocumentItem) => void;
 };
 
 const DocumentCard = memo(function DocumentCard({
   document,
   favoriteLoading,
+  deleteLoading,
   onToggleFavorite,
+  onDelete,
   onPreview,
 }: DocumentCardProps) {
   const isImage = isImageDocument(document);
   const isPdf = isPdfDocument(document);
   const Icon = isImage ? FileImage : isPdf ? FileText : File;
+  const accessEndpoint = `/api/projects/documents?id=${encodeURIComponent(document.id)}`;
 
   return (
     <article className="group flex min-h-64 flex-col rounded-3xl border border-white/[0.07] bg-zinc-900/60 p-5 transition duration-200 hover:-translate-y-1 hover:border-orange-500/25 hover:shadow-[0_18px_50px_rgba(0,0,0,0.25)]">
@@ -329,29 +378,42 @@ const DocumentCard = memo(function DocumentCard({
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => void onDelete(document)}
+          disabled={deleteLoading}
+          className="inline-flex h-9 items-center gap-2 rounded-xl border border-red-500/15 bg-red-500/5 px-3 text-xs font-semibold text-red-400 transition hover:bg-red-500/10 disabled:cursor-wait disabled:opacity-50"
+          aria-label={`Excluir ${document.name}`}
+        >
+          <Trash2 size={14} className={deleteLoading ? "animate-pulse" : ""} />
+          {deleteLoading ? "Excluindo..." : "Excluir"}
+        </button>
         {isImage ? (
           <button
             type="button"
             onClick={() => onPreview(document)}
-            className="rounded-xl border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-400"
+            disabled={!document.accessUrl}
+            className="rounded-xl border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Visualizar
           </button>
         ) : isPdf ? (
           <a
-            href={document.url}
+            href={document.accessUrl ? accessEndpoint : undefined}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-400"
+            aria-disabled={!document.accessUrl}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-400 aria-disabled:pointer-events-none aria-disabled:opacity-50"
           >
             <ExternalLink size={14} />
             Abrir PDF
           </a>
         ) : (
           <a
-            href={document.url}
+            href={document.accessUrl ? accessEndpoint : undefined}
             download={document.name}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-400"
+            aria-disabled={!document.accessUrl}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-400 aria-disabled:pointer-events-none aria-disabled:opacity-50"
           >
             <Download size={14} />
             Download
@@ -427,7 +489,7 @@ function ImagePreview({
         </div>
         <div className="flex max-h-[78vh] items-center justify-center bg-black p-4">
           <Image
-            src={document.url}
+            src={`/api/projects/documents?id=${encodeURIComponent(document.id)}`}
             alt={document.name}
             width={1600}
             height={1000}

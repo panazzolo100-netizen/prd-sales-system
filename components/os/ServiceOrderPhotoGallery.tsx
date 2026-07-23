@@ -11,7 +11,8 @@ import {
 type PhotoGalleryPhoto = {
   id: string;
   name: string;
-  url: string;
+  storageReference: string;
+  accessUrl: string | null;
   notes: string | null;
   createdAt: Date | string;
 };
@@ -145,13 +146,13 @@ export function ServiceOrderPhotoGallery({
               className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950"
             >
               <a
-                href={photo.url}
+                href={`/api/os/photos?photoId=${encodeURIComponent(photo.id)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="block overflow-hidden"
               >
                 <img
-                  src={photo.url}
+                  src={`/api/os/photos?photoId=${encodeURIComponent(photo.id)}`}
                   alt={photo.name}
                   className="h-52 w-full object-cover transition hover:scale-105"
                 />

@@ -3,8 +3,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { AppLayout } from "@/components/layout/AppLayout";
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
-import { prisma } from "@/lib/prisma";
+import { createEngineeringProject, getEngineeringOverview } from "@/services/engineering.service";
+import { ProgressBar } from "@/components/ui/erp";
+import { Camera, FileText, UserRound, UsersRound } from "lucide-react";
+import { ENGINEERING_SERVICE_TYPES, engineeringTypeLabel } from "@/lib/engineering-service-types";
+import { formatPhone } from "@/utils/formatters";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR").format(date);
@@ -35,8 +38,6 @@ function statusLabel(status: string) {
 async function createProject(formData: FormData) {
   "use server";
 
-  const companyId = await getCurrentCompanyId();
-
   const title = String(
     formData.get("title") ?? ""
   ).trim();
@@ -48,55 +49,9 @@ async function createProject(formData: FormData) {
   const description = String(
     formData.get("description") ?? ""
   ).trim();
+  const serviceType = String(formData.get("serviceType") ?? "USINA_SOLAR");
 
-  if (!title) {
-    throw new Error(
-      "Informe o título do projeto."
-    );
-  }
-
-  if (!clientId) {
-    throw new Error(
-      "Selecione um cliente."
-    );
-  }
-
-  const client =
-    await prisma.client.findFirst({
-      where: {
-        id: clientId,
-        companyId,
-      },
-    });
-
-  if (!client) {
-    throw new Error(
-      "Cliente não encontrado."
-    );
-  }
-
-  const project =
-    await prisma.project.create({
-      data: {
-        title,
-        status: "NOVO",
-        description:
-          description || null,
-        companyId,
-        clientId,
-      },
-    });
-
-  await prisma.financial.create({
-    data: {
-      saleValue: 0,
-      costValue: 0,
-      receivedValue: 0,
-      status: "PENDENTE",
-      companyId,
-      projectId: project.id,
-    },
-  });
+  const project = await createEngineeringProject({ title, clientId, serviceType, description });
 
   revalidatePath("/engenharia");
   revalidatePath("/financeiro");
@@ -108,48 +63,7 @@ async function createProject(formData: FormData) {
 }
 
 export default async function Engenharia() {
-  const companyId =
-    await getCurrentCompanyId();
-
-  const [projetos, clientes] =
-    await Promise.all([
-      prisma.project.findMany({
-        where: {
-          companyId,
-        },
-
-        include: {
-          client: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              city: true,
-              state: true,
-            },
-          },
-        },
-
-        orderBy: {
-          createdAt: "desc",
-        },
-      }),
-
-      prisma.client.findMany({
-        where: {
-          companyId,
-        },
-
-        orderBy: {
-          name: "asc",
-        },
-
-        select: {
-          id: true,
-          name: true,
-        },
-      }),
-    ]);
+  const [projetos, clientes] = await getEngineeringOverview();
 
   return (
     <AppLayout>
@@ -179,6 +93,11 @@ export default async function Engenharia() {
                 action={createProject}
                 className="mt-5 space-y-4"
               >
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-zinc-400">Tipo de serviço de engenharia</label>
+                  <select name="serviceType" defaultValue="USINA_SOLAR" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-orange-500">{ENGINEERING_SERVICE_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+                </div>
+
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-zinc-400">
                     Título
@@ -257,16 +176,23 @@ export default async function Engenharia() {
         </div>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {projetos.map((projeto) => (
+          {projetos.map((projeto) => {
+            const order = projeto.serviceOrder;
+            const checklist = order ? [order.checklistArt, order.checklistProjectApproved, order.checklistMaterialsSeparated, order.checklistStructureInstalled, order.checklistModulesInstalled, order.checklistInverterInstalled, order.checklistDcCabling, order.checklistAcCabling, order.checklistCommissioning, order.checklistCustomerTraining, order.checklistDelivered] : [];
+            const completed = checklist.filter(Boolean).length;
+            const progress = checklist.length ? Math.round(completed / checklist.length * 100) : 0;
+            const isLate = Boolean(order?.scheduledDate && order.scheduledDate < new Date() && order.status !== "CONCLUIDA");
+            return (
             <div
               key={projeto.id}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 transition hover:border-orange-500"
+              className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900 to-zinc-950 p-5 shadow-xl shadow-black/10 transition duration-200 hover:-translate-y-1 ${isLate ? "border-red-500/30" : "border-white/[0.07] hover:border-orange-500/35"}`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-white">
                     {projeto.title}
                   </h2>
+                  <span className="mt-2 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold text-cyan-300">{engineeringTypeLabel(projeto.serviceType)}</span>
 
                   <p className="mt-1 text-zinc-400">
                     {projeto.client.name}
@@ -285,6 +211,8 @@ export default async function Engenharia() {
                   {projeto.description}
                 </p>
               )}
+
+              <div className="mt-5 rounded-xl border border-white/[0.06] bg-black/20 p-4"><ProgressBar value={progress} label={`${completed} de 11 etapas`} tone={progress === 100 ? "green" : isLate ? "red" : "orange"} /><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><span className="flex items-center gap-2 text-zinc-500"><UserRound size={14} />{order?.responsible ?? "Sem responsável"}</span><span className="flex items-center gap-2 text-zinc-500"><UsersRound size={14} />{order?.team ?? "Sem equipe"}</span><span className="flex items-center gap-2 text-zinc-500"><Camera size={14} />{order?.photos.length ?? 0} foto(s)</span><span className="flex items-center gap-2 text-zinc-500"><FileText size={14} />{projeto._count.documents} documento(s)</span></div>{isLate && <p className="mt-3 text-xs font-bold text-red-400">Prazo operacional atrasado</p>}</div>
 
               <div className="mt-6 space-y-3 border-t border-zinc-800 pt-5 text-sm">
                 <div className="flex items-center justify-between gap-4">
@@ -309,8 +237,7 @@ export default async function Engenharia() {
                   </span>
 
                   <span className="text-zinc-200">
-                    {projeto.client.phone ??
-                      "-"}
+                    {formatPhone(projeto.client.phone)}
                   </span>
                 </div>
 
@@ -334,7 +261,7 @@ export default async function Engenharia() {
                 Abrir Projeto
               </Link>
             </div>
-          ))}
+          );})}
         </div>
 
         {projetos.length === 0 && (

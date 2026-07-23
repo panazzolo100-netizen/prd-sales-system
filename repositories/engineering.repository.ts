@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { suggestedStages } from "@/lib/engineering-service-types";
 
 export type CreateEngineeringData = {
   leadId: string;
@@ -96,5 +97,42 @@ export async function upsertEngineering(
       leadId,
       ...data,
     },
+  });
+}
+
+export async function findEngineeringProjectDetails(projectId: string, companyId: string) {
+  return prisma.project.findFirst({
+    where: { id: projectId, companyId },
+    include: {
+      client: {
+        include: {
+          lead: { include: { engineering: true, proposal: true } },
+        },
+      },
+      financial: true,
+      serviceOrder: true,
+      stages: { orderBy: { position: "asc" } },
+      documents: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          uploadedBy: { select: { id: true, name: true } },
+        },
+      },
+    },
+  });
+}
+
+export async function findEngineeringOverview(companyId: string) {
+  return Promise.all([prisma.project.findMany({ where: { companyId }, include: { client: { select: { id: true, name: true, phone: true, city: true, state: true } }, serviceOrder: { include: { photos: { select: { id: true } } } }, _count: { select: { documents: true } } }, orderBy: { createdAt: "desc" } }), prisma.client.findMany({ where: { companyId }, orderBy: { name: "asc" }, select: { id: true, name: true } })]);
+}
+
+export async function createEngineeringProjectRepository(data: { companyId: string; clientId: string; serviceType: string; title: string; description: string | null }) {
+  return prisma.$transaction(async (transaction) => {
+    if (!await transaction.client.findFirst({ where: { id: data.clientId, companyId: data.companyId }, select: { id: true } })) throw new Error("Cliente não encontrado.");
+    const project = await transaction.project.create({ data: { ...data, status: "NOVO" } });
+    await transaction.projectStage.createMany({ data: suggestedStages(data.serviceType).map((title, position) => ({ projectId: project.id, title, position })) });
+    await transaction.financial.create({ data: { companyId: data.companyId, projectId: project.id } });
+    await transaction.projectTimeline.create({ data: { projectId: project.id, type: "PROJECT_CREATED", title: "Projeto criado", description: "Projeto cadastrado pela Engenharia." } });
+    return project;
   });
 }

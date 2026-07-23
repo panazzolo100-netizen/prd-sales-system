@@ -109,12 +109,11 @@ export async function findProjectForServiceOrder(
 }
 
 export async function findServiceOrderForUpdate(
-  id: string
+  id: string,
+  companyId: string
 ) {
-  return prisma.serviceOrder.findUnique({
-    where: {
-      id,
-    },
+  return prisma.serviceOrder.findFirst({
+    where: { id, companyId },
     select: {
       status: true,
       responsible: true,
@@ -131,12 +130,11 @@ export async function findServiceOrderForUpdate(
 }
 
 export async function findServiceOrderChecklist(
-  id: string
+  id: string,
+  companyId: string
 ) {
-  return prisma.serviceOrder.findUnique({
-    where: {
-      id,
-    },
+  return prisma.serviceOrder.findFirst({
+    where: { id, companyId },
     select: {
       projectId: true,
       status: true,
@@ -156,12 +154,11 @@ export async function findServiceOrderChecklist(
 }
 
 export async function findServiceOrderSignatures(
-  id: string
+  id: string,
+  companyId: string
 ) {
-  return prisma.serviceOrder.findUnique({
-    where: {
-      id,
-    },
+  return prisma.serviceOrder.findFirst({
+    where: { id, companyId },
     select: {
       customerName: true,
       customerDocument: true,
@@ -174,16 +171,33 @@ export async function findServiceOrderSignatures(
 }
 
 export async function findServiceOrderForPdf(
-  id: string
+  id: string,
+  companyId?: string
 ) {
-  return prisma.serviceOrder.findUnique({
-    where: {
-      id,
-    },
+  return prisma.serviceOrder.findFirst({
+    where: { id, companyId },
     include: {
       project: {
         include: {
-          client: true,
+          company: {
+            select: {
+              name: true,
+              tradeName: true,
+              document: true,
+              phone: true,
+              email: true,
+              address: true,
+            },
+          },
+          client: {
+            include: {
+              lead: {
+                include: { engineering: true },
+              },
+            },
+          },
+          stages: { orderBy: { position: "asc" } },
+          _count: { select: { documents: true } },
         },
       },
 
@@ -204,6 +218,7 @@ export async function findServiceOrderForPdf(
 
 export async function updateServiceOrderRepository(
   id: string,
+  companyId: string,
   data: {
     status: string;
     responsible: string | null;
@@ -217,15 +232,14 @@ export async function updateServiceOrderRepository(
   }
 ) {
   return prisma.serviceOrder.update({
-    where: {
-      id,
-    },
+    where: { id, companyId },
     data,
   });
 }
 
 export async function updateServiceOrderChecklist(
   id: string,
+  companyId: string,
   data: {
     checklistArt: boolean;
     checklistProjectApproved: boolean;
@@ -243,15 +257,14 @@ export async function updateServiceOrderChecklist(
   }
 ) {
   return prisma.serviceOrder.update({
-    where: {
-      id,
-    },
+    where: { id, companyId },
     data,
   });
 }
 
 export async function updateServiceOrderSignatures(
   id: string,
+  companyId: string,
   data: {
     customerName: string | null;
     customerDocument: string | null;
@@ -262,22 +275,64 @@ export async function updateServiceOrderSignatures(
   }
 ) {
   return prisma.serviceOrder.update({
-    where: {
-      id,
-    },
+    where: { id, companyId },
     data,
   });
 }
 
 export async function completeServiceOrderProject(
-  projectId: string
+  projectId: string,
+  companyId: string
 ) {
   return prisma.project.update({
-    where: {
-      id: projectId,
-    },
+    where: { id: projectId, companyId },
     data: {
       status: "CONCLUIDO",
+    },
+  });
+}
+
+export async function findServiceOrderDashboard(
+  id: string,
+  companyId: string
+) {
+  return prisma.serviceOrder.findFirst({
+    where: {
+      id,
+      companyId,
+    },
+    select: {
+      _count: {
+        select: {
+          photos: true,
+        },
+      },
+      photos: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 4,
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          category: true,
+          createdAt: true,
+        },
+      },
+      timeline: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 5,
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          description: true,
+          createdAt: true,
+        },
+      },
     },
   });
 }

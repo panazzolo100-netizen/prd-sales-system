@@ -141,3 +141,10 @@ export async function getCashFlowSummary(
     expenses: expenses._sum.value ?? 0,
   };
 }
+
+export async function findCompanyCashFlowByPeriod(companyId: string, from?: Date, to?: Date) {
+  return prisma.cashFlow.findMany({
+    where: { companyId, paidAt: from || to ? { gte: from, lte: to } : undefined },
+    orderBy: { paidAt: "asc" },
+  });
+}

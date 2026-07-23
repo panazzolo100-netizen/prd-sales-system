@@ -1,5 +1,5 @@
 import { SignaturePad } from "@/components/os/SignaturePad";
-import { updateServiceOrderSignaturesData } from "@/services/service-orders.service";
+import { getServiceOrderPdfData, updateServiceOrderSignaturesData } from "@/services/service-orders.service";
 import {
   updateServiceOrderData,
   updateServiceOrderChecklistData,
@@ -13,7 +13,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ChecklistItem } from "@/components/os/ChecklistItem";
 import { ChecklistSaveStatus } from "@/components/os/ChecklistSaveStatus";
 import { PhotoUpload } from "@/components/os/PhotoUpload";
-import { prisma } from "@/lib/prisma";
 
 type Props = {
   params: Promise<{
@@ -191,32 +190,7 @@ export default async function ServiceOrderPage({
 }: Props) {
   const { id } = await params;
 
-  const ordem =
-    await prisma.serviceOrder.findUnique({
-      where: {
-        id,
-      },
-
-      include: {
-  project: {
-    include: {
-      client: true,
-    },
-  },
-
-  photos: {
-    orderBy: {
-      createdAt: "desc",
-    },
-  },
-
-  timeline: {
-    orderBy: {
-      createdAt: "desc",
-    },
-  },
-},
-    });
+  const ordem = await getServiceOrderPdfData(id).catch(() => null);
 
   if (!ordem) {
     notFound();
@@ -696,9 +670,19 @@ export default async function ServiceOrderPage({
       id,
       customerName: String(formData.get("customerName") ?? ""),
       customerDocument: String(formData.get("customerDocument") ?? ""),
-      customerSignature: String(formData.get("customerSignature") ?? ""),
+      customerSignature:
+        formData.get("customerSignatureAction") === "unchanged"
+          ? undefined
+          : formData.get("customerSignatureAction") === "clear"
+            ? null
+            : String(formData.get("customerSignature") ?? ""),
       technicianName: String(formData.get("technicianName") ?? ""),
-      technicianSignature: String(formData.get("technicianSignature") ?? ""),
+      technicianSignature:
+        formData.get("technicianSignatureAction") === "unchanged"
+          ? undefined
+          : formData.get("technicianSignatureAction") === "clear"
+            ? null
+            : String(formData.get("technicianSignature") ?? ""),
     });
 
     revalidatePath(`/os/${id}`);
@@ -742,13 +726,13 @@ export default async function ServiceOrderPage({
     <SignaturePad
       title="Assinatura do Cliente"
       name="customerSignature"
-      defaultValue={ordem.customerSignature}
+      defaultValue={ordem.customerSignature ? `/api/os/signatures?id=${encodeURIComponent(ordem.id)}&type=client` : null}
     />
 
     <SignaturePad
       title="Assinatura do Técnico"
       name="technicianSignature"
-      defaultValue={ordem.technicianSignature}
+      defaultValue={ordem.technicianSignature ? `/api/os/signatures?id=${encodeURIComponent(ordem.id)}&type=technician` : null}
     />
   </div>
 
@@ -903,7 +887,8 @@ function HeaderInfo({
 type PhotoGalleryPhoto = {
   id: string;
   name: string;
-  url: string;
+  storageReference: string;
+  accessUrl: string | null;
   notes: string | null;
   createdAt: Date;
 };

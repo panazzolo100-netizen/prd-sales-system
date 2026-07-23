@@ -28,11 +28,13 @@ export async function createServiceOrderPhoto(
 }
 
 export async function findServiceOrderPhotos(
-  serviceOrderId: string
+  serviceOrderId: string,
+  companyId: string
 ) {
   return prisma.serviceOrderPhoto.findMany({
     where: {
       serviceOrderId,
+      serviceOrder: { companyId },
     },
     orderBy: {
       createdAt: "desc",
@@ -41,12 +43,11 @@ export async function findServiceOrderPhotos(
 }
 
 export async function findServiceOrderPhotoById(
-  id: string
+  id: string,
+  companyId: string
 ) {
-  return prisma.serviceOrderPhoto.findUnique({
-    where: {
-      id,
-    },
+  return prisma.serviceOrderPhoto.findFirst({
+    where: { id, serviceOrder: { companyId } },
   });
 }
 
@@ -58,4 +59,8 @@ export async function deleteServiceOrderPhoto(
       id,
     },
   });
+}
+
+export async function findCompanyServiceOrderForPhoto(serviceOrderId: string, companyId: string) {
+  return prisma.serviceOrder.findFirst({ where: { id: serviceOrderId, companyId }, select: { id: true } });
 }

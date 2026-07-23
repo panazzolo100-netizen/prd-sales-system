@@ -140,11 +140,15 @@ export function DocumentUpload({
           <input
             ref={inputRef}
             type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx"
             hidden
             onChange={(event) =>
               setFile(event.target.files?.[0] ?? null)
             }
           />
+          <p className="mt-3 text-xs leading-5 text-zinc-600">
+            PDF, JPG, PNG, WebP, Word ou Excel. Tamanho máximo: 20 MB.
+          </p>
         </div>
 
         <div className="space-y-4">

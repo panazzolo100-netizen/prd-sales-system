@@ -10,6 +10,9 @@ import {
 import {
   findDimensioningByLead,
 } from "@/repositories/dimensioning.repository";
+import { findLeadById } from "@/repositories/leads.repository";
+
+async function assertLeadAccess(leadId: string) { if (!await findLeadById(leadId, await getCurrentCompanyId())) throw new Error("Lead não encontrado."); }
 
 export async function listCompanyProposals() {
   const companyId =
@@ -23,6 +26,7 @@ export async function listCompanyProposals() {
 export async function getProposal(
   leadId: string
 ) {
+  await assertLeadAccess(leadId);
   return findProposalByLead(
     leadId
   );
@@ -32,6 +36,7 @@ export async function saveProposal(
   leadId: string,
   data: UpdateProposalData
 ) {
+  await assertLeadAccess(leadId);
   return upsertProposal(
     leadId,
     data
@@ -41,6 +46,7 @@ export async function saveProposal(
 export async function generateProposal(
   leadId: string
 ) {
+  await assertLeadAccess(leadId);
   const dimensioning =
     await findDimensioningByLead(
       leadId

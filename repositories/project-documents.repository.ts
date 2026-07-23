@@ -38,11 +38,13 @@ export async function createProjectDocument(
 }
 
 export async function findProjectDocuments(
-  projectId: string
+  projectId: string,
+  companyId: string
 ) {
   return prisma.projectDocument.findMany({
     where: {
       projectId,
+      project: { companyId },
     },
     orderBy: {
       createdAt: "desc",

@@ -1,6 +1,6 @@
 import {
   ArrowRight,
-  Bolt,
+  BriefcaseBusiness,
   Flame,
   MapPin,
   MessageCircle,
@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 
 import type { LeadListItem } from "@/types/lead";
+import { inferLegacyServiceType, isSolarService, serviceTypeLabel } from "@/lib/opportunity-service-types";
+import { formatPhone } from "@/utils/formatters";
 
 interface LeadCardProps {
   lead: LeadListItem;
@@ -84,6 +86,14 @@ export function LeadCard({
     getTemperature(
       lead.estimatedValue
     );
+  const serviceType = inferLegacyServiceType(lead);
+  const details = lead.serviceDetails ?? {};
+  const secondary = isSolarService(serviceType)
+    ? [details.monthlyConsumption ? `${details.monthlyConsumption} kWh` : formatConsumption(lead.consumptionKwh), details.distributor]
+    : serviceType === "SPDA" ? [details.needType, details.buildingType]
+    : serviceType === "SUBESTACAO" ? [details.powerKva ? `${details.powerKva} kVA` : null, details.utility]
+    : serviceType === "LAUDO_TECNICO" || serviceType === "INSPECAO_ELETRICA" ? [details.reportType, details.deadline]
+    : [];
 
   return (
     <div className="group rounded-3xl border border-white/5 bg-zinc-900 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/30 hover:shadow-xl hover:shadow-orange-500/10">
@@ -130,7 +140,7 @@ export function LeadCard({
 
           <Phone size={16} />
 
-          {lead.phone ?? "Sem telefone"}
+          {lead.phone ? formatPhone(lead.phone) : "Sem telefone"}
 
         </div>
 
@@ -147,15 +157,14 @@ export function LeadCard({
 
         <div className="flex items-center gap-3 text-zinc-300">
 
-          <Bolt size={16} />
-
-          {formatConsumption(
-            lead.consumptionKwh
-          )}
+          <BriefcaseBusiness size={16} />
+          {serviceTypeLabel(serviceType)}
 
         </div>
 
       </div>
+
+      {secondary.filter(Boolean).length > 0 && <p className="mt-3 truncate text-xs text-zinc-500">{secondary.filter(Boolean).join(" · ")}</p>}
 
       <div className="mt-6 border-t border-zinc-800 pt-5">
 

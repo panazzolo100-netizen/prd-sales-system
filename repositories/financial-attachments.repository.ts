@@ -25,11 +25,13 @@ export async function createFinancialAttachment(
 }
 
 export async function findFinancialAttachments(
-  financialId: string
+  financialId: string,
+  companyId: string
 ) {
   return prisma.financialAttachment.findMany({
     where: {
       financialId,
+      financial: { companyId },
     },
     orderBy: {
       createdAt: "desc",
@@ -38,12 +40,11 @@ export async function findFinancialAttachments(
 }
 
 export async function findFinancialAttachmentById(
-  id: string
+  id: string,
+  companyId: string
 ) {
-  return prisma.financialAttachment.findUnique({
-    where: {
-      id,
-    },
+  return prisma.financialAttachment.findFirst({
+    where: { id, financial: { companyId } },
   });
 }
 
@@ -55,4 +56,8 @@ export async function deleteFinancialAttachment(
       id,
     },
   });
+}
+
+export async function findCompanyFinancialForAttachment(financialId: string, companyId: string) {
+  return prisma.financial.findFirst({ where: { id: financialId, companyId }, select: { id: true } });
 }

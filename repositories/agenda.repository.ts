@@ -31,3 +31,7 @@ export async function findScheduledServiceOrders(
     },
   });
 }
+
+export async function findCompanyAgendaUsers(companyId: string) {
+  return prisma.user.findMany({ where: { companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+}

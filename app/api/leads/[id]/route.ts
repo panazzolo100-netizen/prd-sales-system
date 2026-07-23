@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCompanyLeadById } from "@/services/leads.service";
+import { deleteCompanyLead, getCompanyLeadById } from "@/services/leads.service";
 
 type Context = {
   params: Promise<{
@@ -32,5 +32,16 @@ export async function GET(
         status: 500,
       }
     );
+  }
+}
+
+export async function DELETE(_request: Request, context: Context) {
+  try {
+    const { id } = await context.params;
+    await deleteCompanyLead(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao excluir oportunidade.";
+    return NextResponse.json({ error: message }, { status: message.includes("vinculado") ? 409 : 400 });
   }
 }

@@ -12,6 +12,10 @@ import {
 } from "@/components/os/ServiceOrderPdfDocument";
 
 import { getServiceOrderPdfData } from "@/services/service-orders.service";
+import {
+  resolveServiceOrderSignature,
+  type ServiceOrderSignatureType,
+} from "@/services/service-order-signatures.service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +54,18 @@ function sanitizeFilename(
     .replace(/^-|-$/g, "");
 }
 
+async function resolvePdfSignature(
+  serviceOrderId: string,
+  type: ServiceOrderSignatureType,
+  exists: boolean,
+  requestUrl: string
+) {
+  if (!exists) return null;
+  const result = await resolveServiceOrderSignature(serviceOrderId, type);
+  if (result.type === "redirect") return createAbsoluteUrl(result.url, requestUrl);
+  return `data:${result.mimeType};base64,${result.buffer.toString("base64")}`;
+}
+
 export async function GET(
   request: Request,
   context: RouteContext
@@ -71,6 +87,11 @@ export async function GET(
 
     const serviceOrder =
       await getServiceOrderPdfData(id);
+
+    const [customerSignature, technicianSignature] = await Promise.all([
+      resolvePdfSignature(serviceOrder.id, "client", Boolean(serviceOrder.customerSignatureStorageReference), request.url),
+      resolvePdfSignature(serviceOrder.id, "technician", Boolean(serviceOrder.technicianSignatureStorageReference), request.url),
+    ]);
 
     const validationUrl =
       createAbsoluteUrl(
@@ -97,15 +118,16 @@ export async function GET(
       ),
 
       qrCode,
+      customerSignature,
+      technicianSignature,
 
       photos:
         serviceOrder.photos.map(
           (photo) => ({
             ...photo,
-            url: createAbsoluteUrl(
-              photo.url,
-              request.url
-            ),
+            url: photo.accessUrl
+              ? createAbsoluteUrl(photo.accessUrl, request.url)
+              : "",
           })
         ),
     };

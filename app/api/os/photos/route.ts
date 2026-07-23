@@ -1,359 +1,98 @@
-import {
-  mkdir,
-  unlink,
-  writeFile,
-} from "fs/promises";
-import path from "path";
+import { NextRequest, NextResponse } from "next/server";
 
+import { ServiceOrderPhotoCategory } from "@/lib/generated/prisma/enums";
+import { PrivateStorageError } from "@/lib/storage/storage.errors";
 import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
-
-import {
-  ServiceOrderPhotoCategory,
-} from "@/lib/generated/prisma/enums";
-
-import {
+  getServiceOrderPhotoAccess,
   listServiceOrderPhotos,
   removeServiceOrderPhoto,
   uploadServiceOrderPhoto,
 } from "@/services/service-order-photos.service";
 
-export async function GET(
-  request: NextRequest
-) {
+const PHOTO_CATEGORIES = Object.values(ServiceOrderPhotoCategory);
+
+function photoErrorResponse(error: unknown, fallback: string) {
+  if (error instanceof PrivateStorageError) {
+    const invalidCodes = new Set([
+      "INVALID_FILE",
+      "FILE_TYPE_NOT_ALLOWED",
+      "FILE_SIZE_EXCEEDED",
+      "INVALID_STORAGE_PATH",
+    ]);
+    return NextResponse.json(
+      { error: error.message },
+      { status: invalidCodes.has(error.code) ? 400 : error.code === "FILE_NOT_FOUND" ? 404 : 502 }
+    );
+  }
+  const message = error instanceof Error ? error.message : fallback;
+  const safeMessages = new Set(["Ordem de Serviço não encontrada.", "Foto não encontrada."]);
+  return NextResponse.json(
+    { error: safeMessages.has(message) ? message : fallback },
+    { status: message.endsWith("não encontrada.") ? 404 : 500 }
+  );
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const serviceOrderId =
-      request.nextUrl.searchParams
-        .get("serviceOrderId")
-        ?.trim();
-
-    if (!serviceOrderId) {
-      return NextResponse.json(
-        {
-          error:
-            "Ordem de Serviço obrigatória.",
-        },
-        {
-          status: 400,
-        }
-      );
+    const photoId = request.nextUrl.searchParams.get("photoId")?.trim();
+    if (photoId) {
+      const accessUrl = await getServiceOrderPhotoAccess(photoId);
+      return NextResponse.redirect(new URL(accessUrl, request.url));
     }
-
-    const photos =
-      await listServiceOrderPhotos(
-        serviceOrderId
-      );
-
-    return NextResponse.json(
-      photos,
-      {
-        status: 200,
-      }
-    );
+    const serviceOrderId = request.nextUrl.searchParams.get("serviceOrderId")?.trim();
+    if (!serviceOrderId) {
+      return NextResponse.json({ error: "Ordem de Serviço obrigatória." }, { status: 400 });
+    }
+    return NextResponse.json(await listServiceOrderPhotos(serviceOrderId));
   } catch (error) {
-    console.error(
-      "ERRO AO BUSCAR FOTOS DA OS:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erro ao buscar fotos.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return photoErrorResponse(error, "Erro ao buscar fotos.");
   }
 }
 
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   try {
-    const formData =
-      await request.formData();
-
-    const file =
-      formData.get("file");
-
-    const serviceOrderId =
-      String(
-        formData.get(
-          "serviceOrderId"
-        ) ?? ""
-      ).trim();
-
-    const category =
-      String(
-        formData.get("category") ??
-          ""
-      ).trim() as ServiceOrderPhotoCategory;
-
-    const notes =
-      String(
-        formData.get("notes") ??
-          ""
-      ).trim();
-
+    const formData = await request.formData();
+    const file = formData.get("file");
+    const serviceOrderId = String(formData.get("serviceOrderId") ?? "").trim();
+    const category = String(formData.get("category") ?? "").trim() as ServiceOrderPhotoCategory;
+    const notes = String(formData.get("notes") ?? "").trim();
     if (!(file instanceof File)) {
-      return NextResponse.json(
-        {
-          error:
-            "Selecione uma imagem.",
-        },
-        {
-          status: 400,
-        }
-      );
+      return NextResponse.json({ error: "Selecione uma imagem." }, { status: 400 });
     }
-
     if (!serviceOrderId) {
-      return NextResponse.json(
-        {
-          error:
-            "OS não identificada.",
-        },
-        {
-          status: 400,
-        }
-      );
+      return NextResponse.json({ error: "OS não identificada." }, { status: 400 });
     }
-
-    if (
-      ![
-        "ANTES",
-        "DURANTE",
-        "DEPOIS",
-      ].includes(category)
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Categoria inválida.",
-        },
-        {
-          status: 400,
-        }
-      );
+    if (!PHOTO_CATEGORIES.includes(category)) {
+      return NextResponse.json({ error: "Categoria inválida." }, { status: 400 });
     }
-
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "O arquivo precisa ser uma imagem.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const maxSize =
-      10 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        {
-          error:
-            "A imagem deve ter no máximo 10 MB.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const extension =
-      path
-        .extname(file.name)
-        .toLowerCase() || ".jpg";
-
-    const fileName =
-      `${Date.now()}-${crypto.randomUUID()}${extension}`;
-
-    const uploadDirectory =
-      path.join(
-        process.cwd(),
-        "public",
-        "uploads",
-        "os",
-        serviceOrderId
-      );
-
-    await mkdir(
-      uploadDirectory,
-      {
-        recursive: true,
-      }
-    );
-
-    const bytes =
-      await file.arrayBuffer();
-
-    const buffer =
-      Buffer.from(bytes);
-
-    await writeFile(
-      path.join(
-        uploadDirectory,
-        fileName
-      ),
-      buffer
-    );
-
-    const url =
-      `/uploads/os/${serviceOrderId}/${fileName}`;
-
-    const photo =
-      await uploadServiceOrderPhoto({
-        serviceOrderId,
-        name: file.name,
-        url,
-        mimeType: file.type,
-        size: file.size,
-        category,
-        notes:
-          notes || null,
-      });
-
-    return NextResponse.json(
-      photo,
-      {
-        status: 201,
-      }
-    );
+    const photo = await uploadServiceOrderPhoto({
+      serviceOrderId,
+      name: file.name,
+      mimeType: file.type,
+      size: file.size,
+      buffer: Buffer.from(await file.arrayBuffer()),
+      category,
+      notes: notes || null,
+    });
+    return NextResponse.json(photo, { status: 201 });
   } catch (error) {
-    console.error(
-      "ERRO AO ENVIAR FOTO DA OS:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erro ao enviar imagem.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return photoErrorResponse(error, "Erro ao enviar imagem.");
   }
 }
 
-export async function DELETE(
-  request: NextRequest
-) {
+export async function DELETE(request: NextRequest) {
   try {
-    const body =
-      await request.json();
-
-    const id =
-      String(body.id ?? "").trim();
-
+    const body: unknown = await request.json();
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
+    }
+    const id = String((body as Record<string, unknown>).id ?? "").trim();
     if (!id) {
-      return NextResponse.json(
-        {
-          error:
-            "Foto não identificada.",
-        },
-        {
-          status: 400,
-        }
-      );
+      return NextResponse.json({ error: "Foto não identificada." }, { status: 400 });
     }
-
-    const photo =
-      await removeServiceOrderPhoto(
-        id
-      );
-
-    if (
-      photo.url.startsWith(
-        "/uploads/os/"
-      )
-    ) {
-      const publicDirectory =
-        path.resolve(
-          process.cwd(),
-          "public"
-        );
-
-      const filePath =
-        path.resolve(
-          publicDirectory,
-          photo.url.replace(
-            /^\/+/,
-            ""
-          )
-        );
-
-      const allowedDirectory =
-        path.resolve(
-          publicDirectory,
-          "uploads",
-          "os"
-        );
-
-      if (
-        filePath.startsWith(
-          allowedDirectory
-        )
-      ) {
-        try {
-          await unlink(filePath);
-        } catch (fileError) {
-          console.error(
-            "FOTO REMOVIDA DO BANCO, MAS O ARQUIVO NÃO FOI ENCONTRADO:",
-            fileError
-          );
-        }
-      }
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        photo,
-      },
-      {
-        status: 200,
-      }
-    );
+    const photo = await removeServiceOrderPhoto(id);
+    return NextResponse.json({ success: true, id: photo.id });
   } catch (error) {
-    console.error(
-      "ERRO AO EXCLUIR FOTO DA OS:",
-      error
-    );
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao excluir foto.";
-
-    return NextResponse.json(
-      {
-        error: message,
-      },
-      {
-        status:
-          message ===
-          "Foto não encontrada."
-            ? 404
-            : 500,
-      }
-    );
+    return photoErrorResponse(error, "Erro ao excluir foto.");
   }
 }

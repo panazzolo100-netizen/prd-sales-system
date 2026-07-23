@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { LeadStatus } from "@/lib/generated/prisma/enums";
+import { suggestedStages } from "@/lib/engineering-service-types";
+import {
+  normalizeServiceType,
+  serviceTypeConfig,
+} from "@/lib/opportunity-service-types";
 
 export type CreateLeadData = {
   companyId: string;
@@ -11,6 +16,8 @@ export type CreateLeadData = {
   city?: string | null;
   state?: string | null;
   source?: string | null;
+  serviceType: string;
+  serviceDetails?: Record<string, string | number | boolean>;
   status?: LeadStatus;
   distributor?: string | null;
   consumerUnit?: string | null;
@@ -203,29 +210,77 @@ export async function createProjectFromLead(
     companyId
   );
 
-  const existingProject =
-    await prisma.project.findFirst({
+  // Leads antigos não possuem serviceType. O fallback solar preserva o
+  // comportamento histórico sem reclassificar valores inválidos como solares.
+  const serviceType = normalizeServiceType(lead.serviceType) ?? "USINA_SOLAR";
+  const serviceLabel = serviceTypeConfig[serviceType].label;
+
+  return prisma.$transaction(async (transaction) => {
+    // client.leadId é único, portanto este cliente identifica a oportunidade
+    // original sem confundir outros serviços vendidos ao mesmo cliente nominal.
+    const existingProject = await transaction.project.findFirst({
       where: {
+        companyId,
+        clientId: client.id,
+        client: { leadId },
+      },
+    });
+
+    if (existingProject) return existingProject;
+
+    const project = await transaction.project.create({
+      data: {
+        title: `${serviceLabel} - ${lead.companyName}`,
+        serviceType,
+        status: "NOVO",
+        description:
+          lead.notes ??
+          "Projeto criado automaticamente após o fechamento da oportunidade.",
         companyId,
         clientId: client.id,
       },
     });
 
-  if (existingProject) {
-    return existingProject;
-  }
+    await transaction.projectStage.createMany({
+      data: suggestedStages(serviceType).map((title, position) => ({
+        projectId: project.id,
+        title,
+        position,
+      })),
+    });
 
-  return prisma.project.create({
-    data: {
-      title: `Projeto Solar - ${lead.companyName}`,
-      status: "NOVO",
-      description:
-        lead.notes ??
-        "Projeto criado automaticamente após o fechamento do lead.",
-      companyId,
-      clientId: client.id,
-    },
+    await transaction.financial.create({
+      data: {
+        saleValue: lead.proposal?.amount ?? lead.estimatedValue ?? 0,
+        costValue: 0,
+        receivedValue: 0,
+        status: "PENDENTE",
+        companyId,
+        projectId: project.id,
+      },
+    });
+
+    await transaction.projectTimeline.create({
+      data: {
+        projectId: project.id,
+        type: "PROJECT_CREATED",
+        title: "Projeto criado",
+        description: `Projeto criado automaticamente a partir da oportunidade de ${serviceLabel}.`,
+      },
+    });
+
+    return project;
+  }, { isolationLevel: "Serializable" });
+}
+
+export async function findCompanyLeadFileById(id: string, companyId: string) {
+  return prisma.leadFile.findFirst({
+    where: { id, lead: { companyId } },
   });
+}
+
+export async function deleteLeadFile(id: string) {
+  return prisma.leadFile.delete({ where: { id } });
 }
 
 export async function createFinancialFromLead(

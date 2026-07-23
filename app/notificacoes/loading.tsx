@@ -1,0 +1,2 @@
+import { AppLayout } from "@/components/layout/AppLayout";
+export default function Loading() { return <AppLayout><div className="animate-pulse space-y-5"><div className="h-24 w-80 rounded-2xl bg-zinc-900" /><div className="grid gap-4 sm:grid-cols-3">{[1,2,3].map((item) => <div key={item} className="h-28 rounded-2xl bg-zinc-900" />)}</div><div className="h-80 rounded-2xl bg-zinc-900" /></div></AppLayout>; }

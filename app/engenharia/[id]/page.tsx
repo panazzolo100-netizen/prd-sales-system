@@ -1,9 +1,13 @@
-import { DocumentUpload } from "@/components/projects/DocumentUpload";
+import { EngineeringProjectDocuments } from "@/components/engineering/EngineeringProjectDocuments";
+import { EngineeringTechnicalDetails } from "@/components/engineering/EngineeringTechnicalDetails";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { prisma } from "@/lib/prisma";
+import { getEngineeringProjectDetails } from "@/services/engineering.service";
+import { updateCompanyProject } from "@/services/projects.service";
+import { createServiceOrderData } from "@/services/service-orders.service";
+import { getCurrentCompanyId } from "@/lib/auth/current-user";
 
 type Props = {
   params: Promise<{
@@ -51,17 +55,7 @@ async function updateProject(
     );
   }
 
-  await prisma.project.update({
-    where: {
-      id: projectId,
-    },
-
-    data: {
-      status,
-      description:
-        description || null,
-    },
-  });
+  await updateCompanyProject(projectId, { status, description: description || null });
 
   revalidatePath("/engenharia");
   revalidatePath(
@@ -88,22 +82,7 @@ async function createServiceOrder(
     );
   }
 
-  const project =
-    await prisma.project.findUnique({
-      where: {
-        id: projectId,
-      },
-
-      include: {
-        client: true,
-        serviceOrder: true,
-        documents: {
-  orderBy: {
-    createdAt: "desc",
-  },
-},
-      },
-    });
+  const project = await getEngineeringProjectDetails(projectId);
 
   if (!project) {
     throw new Error(
@@ -115,25 +94,11 @@ async function createServiceOrder(
     redirect("/os");
   }
 
-  await prisma.serviceOrder.create({
-    data: {
-      number: `OS-${Date.now()}`,
-
-      title:
-        `Execução - ${project.title}`,
-
-      status: "ABERTA",
-
-      services:
-        project.description ??
-        "Serviços relacionados ao projeto.",
-
-      companyId:
-        project.companyId,
-
-      projectId:
-        project.id,
-    },
+  await createServiceOrderData({
+    projectId: project.id,
+    companyId: await getCurrentCompanyId(),
+    title: `Execução - ${project.title}`,
+    services: project.description ?? "Serviços relacionados ao projeto.",
   });
 
   revalidatePath("/os");
@@ -150,42 +115,11 @@ export default async function ProjetoPage({
 }: Props) {
   const { id } = await params;
 
-  const projeto =
-  await prisma.project.findUnique({
-    where: {
-      id,
-    },
-
-    include: {
-      client: {
-        include: {
-          lead: {
-            include: {
-              engineering: true,
-              proposal: true,
-            },
-          },
-        },
-      },
-
-      financial: true,
-
-      serviceOrder: true,
-
-      documents: {
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-    },
-  });
+  const projeto = await getEngineeringProjectDetails(id);
 
   if (!projeto) {
     notFound();
   }
-
-  const engineering =
-    projeto.client.lead?.engineering;
 
   const proposal =
     projeto.client.lead?.proposal;
@@ -369,115 +303,10 @@ export default async function ProjetoPage({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="mb-5 text-2xl font-bold text-white">
-            Dados Técnicos
-          </h2>
-
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <Card
-              title="Potência instalada"
-              value={`${
-                engineering
-                  ?.installedPower ?? "-"
-              } kWp`}
-            />
-
-            <Card
-              title="Quantidade de módulos"
-              value={String(
-                engineering?.modules ?? "-"
-              )}
-            />
-
-            <Card
-              title="Potência do módulo"
-              value={`${
-                engineering?.modulePower ??
-                "-"
-              } W`}
-            />
-
-            <Card
-              title="Marca dos módulos"
-              value={
-                engineering?.moduleBrand ??
-                "-"
-              }
-            />
-
-            <Card
-              title="Inversor"
-              value={
-                engineering?.inverter ?? "-"
-              }
-            />
-
-            <Card
-              title="Tipo de sistema"
-              value={
-                engineering?.systemType ??
-                "-"
-              }
-            />
-
-            <Card
-              title="Distribuidora"
-              value={
-                engineering?.distributor ??
-                "-"
-              }
-            />
-
-            <Card
-              title="Unidade consumidora"
-              value={
-                engineering
-                  ?.consumerUnit ?? "-"
-              }
-            />
-
-            <Card
-              title="Tensão"
-              value={
-                engineering?.voltage ?? "-"
-              }
-            />
-
-            <Card
-              title="Fase"
-              value={
-                engineering?.phase ?? "-"
-              }
-            />
-
-            <Card
-              title="Tipo de telhado"
-              value={
-                engineering?.roofType ?? "-"
-              }
-            />
-
-            <Card
-              title="Área do telhado"
-              value={`${
-                engineering?.roofArea ?? "-"
-              } m²`}
-            />
-          </div>
-
-          {engineering?.notes && (
-            <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-              <p className="text-sm text-zinc-500">
-                Observações técnicas
-              </p>
-
-              <p className="mt-2 whitespace-pre-wrap text-zinc-200">
-                {engineering.notes}
-              </p>
-            </div>
-          )}
-        </section>
+        <EngineeringTechnicalDetails
+          serviceType={projeto.resolvedServiceType}
+          details={projeto.serviceDetails}
+        />
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
           <h2 className="mb-5 text-2xl font-bold text-white">
@@ -619,93 +448,10 @@ export default async function ProjetoPage({
             </div>
           )}
         </section>
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-  <h2 className="text-2xl font-bold text-white">
-    Documentos do Projeto
-  </h2>
-
-  <p className="mt-2 text-zinc-400">
-    Contrato, ART, Projeto, Memorial, NF, Garantias e Manuais.
-  </p>
-
-  <div className="mt-6 grid gap-5 xl:grid-cols-4">
-    <DocumentUpload
-      projectId={projeto.id}
-      type="CONTRATO"
-      title="Contrato"
-    />
-
-    <DocumentUpload
-      projectId={projeto.id}
-      type="ART"
-      title="ART"
-    />
-
-    <DocumentUpload
-      projectId={projeto.id}
-      type="PROJETO"
-      title="Projeto"
-    />
-
-    <DocumentUpload
-      projectId={projeto.id}
-      type="MEMORIAL"
-      title="Memorial"
-    />
-
-    <DocumentUpload
-      projectId={projeto.id}
-      type="NOTA_FISCAL"
-      title="Nota Fiscal"
-    />
-
-    <DocumentUpload
-      projectId={projeto.id}
-      type="GARANTIA"
-      title="Garantia"
-    />
-
-    <DocumentUpload
-      projectId={projeto.id}
-      type="MANUAL"
-      title="Manual"
-    />
-
-    <DocumentUpload
-      projectId={projeto.id}
-      type="OUTRO"
-      title="Outros"
-    />
-  </div>
-
-  {projeto.documents.length > 0 && (
-    <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {projeto.documents.map((doc) => (
-        <a
-          key={doc.id}
-          href={doc.url}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500"
-        >
-          <p className="font-semibold text-white">
-            {doc.name}
-          </p>
-
-          <p className="mt-2 text-sm text-orange-500">
-            {doc.type.replaceAll("_", " ")}
-          </p>
-
-          <p className="mt-2 text-xs text-zinc-500">
-            {new Intl.DateTimeFormat("pt-BR").format(
-              doc.createdAt
-            )}
-          </p>
-        </a>
-      ))}
-    </div>
-  )}
-</section>
+        <EngineeringProjectDocuments
+          projectId={projeto.id}
+          initialDocuments={projeto.documents}
+        />
       </main>
     </AppLayout>
   );

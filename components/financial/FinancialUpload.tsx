@@ -120,6 +120,7 @@ export function FinancialUpload({
         <input
           ref={inputRef}
           type="file"
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt"
           onChange={(event) => {
             setFile(
               event.target.files?.[0] ??

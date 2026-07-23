@@ -23,7 +23,8 @@ export type LeadActivityItem = {
 export type LeadFileItem = {
   id: string;
   name: string;
-  url: string;
+  storageReference: string;
+  accessUrl: string | null;
   mimeType: string;
   size: number;
   createdAt: Date;
@@ -36,6 +37,10 @@ export type LeadProposalItem = {
   status: string;
   validUntil: Date | null;
   createdAt: Date;
+  systemPower: number | null;
+  monthlySaving: number | null;
+  annualSaving: number | null;
+  payback: number | null;
 };
 
 export type LeadEngineeringItem = {
@@ -61,6 +66,9 @@ export type LeadListItem = {
 
   city: string | null;
   state: string | null;
+  source: string | null;
+  serviceType: string | null;
+  serviceDetails: Record<string, string | number | boolean> | null;
 
   distributor: string | null;
   consumerUnit: string | null;
@@ -74,6 +82,9 @@ export type LeadListItem = {
   notes: string | null;
 
   status: LeadStatus;
+  owner?: { id: string; name: string; email: string } | null;
+  client?: { id: string } | null;
+  proposal?: LeadProposalItem | null;
 
   createdAt: Date;
   updatedAt: Date;

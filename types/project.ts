@@ -7,13 +7,15 @@ export type ProjectClient = {
 
   city: string | null;
   state: string | null;
+  address: string | null;
 };
 
 export type ProjectDocumentItem = {
   id: string;
 
   name: string;
-  url: string;
+  storageReference: string;
+  accessUrl: string | null;
   mimeType: string;
   size: number;
 
@@ -99,6 +101,29 @@ export type ProjectServiceOrder = {
   projectId: string;
 };
 
+export type ServiceOrderRecentPhoto = {
+  id: string;
+  name: string;
+  storageReference: string;
+  accessUrl: string | null;
+  category: "ANTES" | "DURANTE" | "DEPOIS";
+  createdAt: Date | string;
+};
+
+export type ServiceOrderRecentEvent = {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  createdAt: Date | string;
+};
+
+export type ServiceOrderDashboard = {
+  photoCount: number;
+  recentPhotos: ServiceOrderRecentPhoto[];
+  recentEvents: ServiceOrderRecentEvent[];
+};
+
 export type ProjectChecklistProgress = {
   total: number;
   completed: number;
@@ -161,6 +186,7 @@ export type ProjectListItem = {
   id: string;
 
   title: string;
+  serviceType: string;
   status: string;
   description: string | null;
 

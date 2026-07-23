@@ -6,6 +6,7 @@ import { Upload, Plus } from "lucide-react";
 
 import { LeadDimensioning } from "@/components/leads/LeadDimensioning";
 import type { LeadListItem } from "@/types/lead";
+import { inferLegacyServiceType, isSolarService, serviceTypeConfig, serviceTypeLabel, type OpportunityServiceType, type ServiceField } from "@/lib/opportunity-service-types";
 
 export type LeadTab =
   | "Resumo"
@@ -15,7 +16,7 @@ export type LeadTab =
   | "Dimensionamento"
   | "Arquivos";
 
-const tabs: LeadTab[] = [
+const allTabs: LeadTab[] = [
   "Resumo",
   "Timeline",
   "Propostas",
@@ -46,12 +47,13 @@ type Props = {
       monthlySaving: number | null;
       annualSaving: number | null;
       payback: number | null;
-    };
+    } | null;
 
     files?: {
       id: string;
       name: string;
-      url: string;
+      storageReference: string;
+      accessUrl: string | null;
       size: number;
       createdAt: Date;
     }[];
@@ -65,12 +67,15 @@ export function LeadTabs({
   lead,
   initialTab = "Resumo",
 }: Props) {
+  const resolvedType = inferLegacyServiceType(lead);
+  const solar = isSolarService(resolvedType);
+  const tabs = allTabs.filter(tab => tab !== "Dimensionamento" || solar);
   const [active, setActive] =
     useState<LeadTab>(initialTab);
 
   useEffect(() => {
-    setActive(initialTab);
-  }, [initialTab, lead.id]);
+    setActive(initialTab === "Dimensionamento" && !solar ? "Resumo" : initialTab);
+  }, [initialTab, lead.id, solar]);
 
   return (
     <>
@@ -95,55 +100,7 @@ export function LeadTabs({
 
       <div className="p-6">
         {active === "Resumo" && (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <h2 className="text-xl font-bold text-white">
-              Dados do Lead
-            </h2>
-
-            <div className="mt-5 grid gap-5 sm:grid-cols-2">
-              <Info
-                label="Empresa"
-                value={lead.companyName}
-              />
-
-              <Info
-                label="Contato"
-                value={lead.contactName}
-              />
-
-              <Info
-                label="Telefone"
-                value={lead.phone ?? "-"}
-              />
-
-              <Info
-                label="Cidade"
-                value={`${lead.city ?? "-"} ${
-                  lead.state ?? ""
-                }`}
-              />
-
-              <Info
-                label="Consumo"
-                value={`${
-                  lead.consumptionKwh ?? 0
-                } kWh`}
-              />
-
-              <Info
-                label="Valor estimado"
-                value={new Intl.NumberFormat(
-                  "pt-BR",
-                  {
-                    style: "currency",
-                    currency: "BRL",
-                  }
-                ).format(
-                  lead.estimatedValue ?? 0
-                )}
-              />
-            </div>
-          </div>
+          <OpportunitySummary lead={lead} resolvedType={resolvedType} />
         )}
 
         {active === "Timeline" && (
@@ -155,10 +112,10 @@ export function LeadTabs({
         )}
 
         {active === "Engenharia" && (
-          <LeadEngineering lead={lead} />
+          solar ? <LeadEngineering lead={lead} /> : <ServiceEngineeringEditor lead={lead} serviceType={resolvedType} />
         )}
 
-        {active === "Dimensionamento" && (
+        {active === "Dimensionamento" && solar && (
           <LeadDimensioning lead={lead} />
         )}
 
@@ -178,6 +135,37 @@ export function LeadTabs({
 
 
 
+
+function displayValue(value: unknown, field?: ServiceField) {
+  if (typeof value === "boolean") return value ? "Sim" : "Não";
+  if (value === null || value === undefined || value === "") return null;
+  return `${String(value)}${field?.unit ? ` ${field.unit}` : ""}`;
+}
+
+function OpportunitySummary({ lead, resolvedType }: { lead: Props["lead"]; resolvedType: OpportunityServiceType | null }) {
+  const details = lead.serviceDetails ?? {};
+  const fields = resolvedType ? serviceTypeConfig[resolvedType].fields : [];
+  const filled = fields.map(field => ({ field, value: displayValue(details[field.key], field) })).filter(item => item.value);
+  const base = [
+    ["Empresa", lead.companyName], ["Contato", lead.contactName], ["Telefone", lead.phone], ["E-mail", lead.email],
+    ["Cidade", [lead.city, lead.state].filter(Boolean).join(" - ")], ["Tipo de serviço", serviceTypeLabel(resolvedType)],
+    ["Status", lead.status], ["Valor estimado", new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(lead.estimatedValue ?? 0)],
+    ["Responsável", lead.owner?.name], ["Origem", lead.source], ["Observações", lead.notes],
+    ["Criada em", new Date(lead.createdAt).toLocaleDateString("pt-BR")], ["Atualizada em", new Date(lead.updatedAt).toLocaleDateString("pt-BR")],
+  ].filter(([,value])=>value);
+  return <div className="space-y-5"><section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6"><h2 className="text-xl font-bold text-white">Resumo da oportunidade</h2><div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{base.map(([label,value])=><Info key={String(label)} label={String(label)} value={String(value)}/>)}</div></section>
+    <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6"><h2 className="text-xl font-bold text-white">Especificações do serviço</h2>{filled.length?<div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{filled.map(({field,value})=><Info key={field.key} label={field.label} value={value!}/>)}</div>:<p className="mt-3 text-sm text-zinc-500">Nenhuma especificação preenchida para este serviço.</p>}</section></div>;
+}
+
+function ServiceEngineeringEditor({ lead, serviceType }: { lead: Props["lead"]; serviceType: OpportunityServiceType | null }) {
+  const router=useRouter(); const [saving,setSaving]=useState(false); const [message,setMessage]=useState<string|null>(null);
+  if(!serviceType) return <div className="rounded-2xl border border-dashed border-zinc-800 p-8 text-center text-zinc-500">Selecione o tipo de serviço em “Editar oportunidade” para liberar a Engenharia.</div>;
+  const fields=serviceTypeConfig[serviceType].engineeringFields;
+  async function save(event: React.FormEvent<HTMLFormElement>){event.preventDefault();setSaving(true);setMessage(null);const data=new FormData(event.currentTarget);const details={...(lead.serviceDetails??{})};for(const field of fields){const raw=data.get(field.key);details[field.key]=field.type==="boolean"?raw==="on":field.type==="number"?Number(raw||0):String(raw??"");}try{const response=await fetch("/api/leads",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:lead.id,serviceType,serviceDetails:details})});if(!response.ok)throw new Error();setMessage("Dados técnicos salvos.");router.refresh();}catch{setMessage("Não foi possível salvar os dados técnicos.");}finally{setSaving(false);}}
+  return <form onSubmit={save} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-wider text-orange-400">Engenharia · {serviceTypeLabel(serviceType)}</p><h2 className="mt-1 text-xl font-bold text-white">Dados técnicos específicos</h2></div><div className="grid gap-4 sm:grid-cols-2">{fields.map(field=><EngineeringField key={field.key} field={field} value={lead.serviceDetails?.[field.key]}/>)}</div><div className="mt-5 flex items-center justify-between gap-3">{message&&<p className="text-sm text-zinc-400">{message}</p>}<button disabled={saving} className="ml-auto rounded-xl bg-orange-500 px-5 py-3 font-bold text-white disabled:opacity-50">{saving?"Salvando...":"Salvar dados técnicos"}</button></div></form>;
+}
+
+function EngineeringField({field,value}:{field:ServiceField;value:unknown}){const cls="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white";if(field.type==="boolean")return <label className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-300"><input type="checkbox" name={field.key} defaultChecked={value===true}/>{field.label}</label>;if(field.type==="textarea")return <label className="space-y-2 sm:col-span-2"><span className="text-sm text-zinc-400">{field.label}</span><textarea name={field.key} defaultValue={String(value??"")} rows={3} className={cls}/></label>;return <label className="space-y-2"><span className="text-sm text-zinc-400">{field.label}</span><input name={field.key} type={field.type==="number"?"number":"text"} defaultValue={String(value??"")} className={cls}/></label>}
 
 function LeadEngineering({ lead }: Props) {
   const router = useRouter();
@@ -857,6 +845,8 @@ function LeadProposals({ lead }: Props) {
 
 
   const proposal = lead.proposal;
+  const proposalServiceType = inferLegacyServiceType(lead);
+  const solarProposal = isSolarService(proposalServiceType);
 
 async function createProposal() {
   if (!title || !amount) return;
@@ -1031,9 +1021,7 @@ function generatePdf() {
               PRD <span>Engenharia</span>
             </div>
 
-            <div class="subtitle">
-              Proposta Comercial de Energia Solar
-            </div>
+            <div class="subtitle">Proposta Comercial · ${serviceTypeLabel(proposalServiceType)}</div>
           </div>
 
           <div class="proposal-number">
@@ -1071,10 +1059,7 @@ function generatePdf() {
           </div>
         </section>
 
-        <section class="section">
-          <div class="section-title">Sistema Fotovoltaico</div>
-
-          <div class="grid">
+        ${solarProposal ? `<section class="section"><div class="section-title">Sistema Fotovoltaico</div><div class="grid">
             <div class="card">
               <div class="label">Potência instalada</div>
               <div class="value">${proposal.systemPower ?? "-"} kWp</div>
@@ -1098,8 +1083,7 @@ function generatePdf() {
               <div class="label">Retorno estimado</div>
               <div class="value">${proposal.payback ?? "-"} anos</div>
             </div>
-          </div>
-        </section>
+          </div></section>` : `<section class="section"><div class="section-title">Serviço proposto</div><div class="card"><div class="label">Tipo de serviço</div><div class="value">${serviceTypeLabel(proposalServiceType)}</div></div></section>`}
 
         <section class="price">
           <div class="price-label">Investimento total</div>
@@ -1235,7 +1219,10 @@ function generatePdf() {
 
   <div className="grid grid-cols-2 gap-4">
 
-    <div>
+    <div><p className="text-xs text-zinc-500">Tipo de serviço</p><p className="text-white">{serviceTypeLabel(proposalServiceType)}</p></div>
+    <div><p className="text-xs text-zinc-500">Validade</p><p className="text-white">{proposal.validUntil ? new Date(proposal.validUntil).toLocaleDateString("pt-BR") : "Não informada"}</p></div>
+
+    {solarProposal && <><div>
       <p className="text-xs text-zinc-500">Potência</p>
       <p className="text-white">
         {proposal.systemPower ?? "-"} kWp
@@ -1247,7 +1234,7 @@ function generatePdf() {
       <p className="text-white">
         R$ {proposal.monthlySaving ?? "-"}
       </p>
-    </div>
+    </div></>}
 
     <div>
       <p className="text-xs text-zinc-500">Economia Anual</p>
@@ -1298,6 +1285,9 @@ function generatePdf() {
 function LeadFiles({ lead }: Props) {
 
   const router = useRouter();
+  const [fileMessage, setFileMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
 
   async function upload(
@@ -1309,6 +1299,9 @@ function LeadFiles({ lead }: Props) {
 
 
     if (!file) return;
+
+    setUploading(true);
+    setFileMessage("");
 
 
 
@@ -1328,17 +1321,43 @@ function LeadFiles({ lead }: Props) {
 
 
 
-    await fetch(
-      "/api/leads/files",
-      {
-        method:"POST",
-        body:formData,
-      }
-    );
+    try {
+      const response = await fetch("/api/leads/files", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Erro ao enviar arquivo.");
+      setFileMessage("Arquivo enviado com sucesso.");
+      event.target.value = "";
+      router.refresh();
+    } catch (error) {
+      setFileMessage(error instanceof Error ? error.message : "Erro ao enviar arquivo.");
+    } finally {
+      setUploading(false);
+    }
 
+  }
 
-    router.refresh();
-
+  async function removeFile(id: string) {
+    if (deletingId || !window.confirm("Deseja excluir este arquivo?")) return;
+    setDeletingId(id);
+    setFileMessage("");
+    try {
+      const response = await fetch("/api/leads/files", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Erro ao excluir arquivo.");
+      setFileMessage("Arquivo removido com sucesso.");
+      router.refresh();
+    } catch (error) {
+      setFileMessage(error instanceof Error ? error.message : "Erro ao excluir arquivo.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
 
@@ -1359,6 +1378,10 @@ function LeadFiles({ lead }: Props) {
 
           type="file"
 
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt"
+
+          disabled={uploading}
+
           onChange={upload}
 
           className="hidden"
@@ -1367,6 +1390,12 @@ function LeadFiles({ lead }: Props) {
 
 
       </label>
+
+      {fileMessage && (
+        <p className={fileMessage.includes("sucesso") ? "text-sm text-emerald-400" : "text-sm text-red-400"}>
+          {fileMessage}
+        </p>
+      )}
 
 
 
@@ -1386,21 +1415,24 @@ function LeadFiles({ lead }: Props) {
           {(lead.files ?? []).map((file)=>(
 
 
-            <a
-
-              key={file.id}
-
-              href={file.url}
-
-              target="_blank"
-
-              className="block rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-white hover:border-orange-500"
-
-            >
-
-              {file.name}
-
-            </a>
+            <div key={file.id} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+              <a
+                href={`/api/leads/files?id=${encodeURIComponent(file.id)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-0 flex-1 truncate text-white hover:text-orange-400"
+              >
+                {file.name}
+              </a>
+              <button
+                type="button"
+                onClick={() => void removeFile(file.id)}
+                disabled={deletingId === file.id}
+                className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+              >
+                {deletingId === file.id ? "Excluindo..." : "Excluir"}
+              </button>
+            </div>
 
 
           ))}

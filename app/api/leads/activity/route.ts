@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createLeadActivity } from "@/repositories/leads.repository";
+import { createCompanyLeadActivity } from "@/services/leads.service";
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const activity = await createLeadActivity({
+    const activity = await createCompanyLeadActivity({
       leadId: body.leadId,
       type: body.type ?? "MANUAL",
       title: body.title,

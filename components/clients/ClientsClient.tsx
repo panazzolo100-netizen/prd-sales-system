@@ -17,6 +17,7 @@ import {
 
 import { ClientDetailsDrawer } from "@/components/clients/ClientDetailsDrawer";
 import type { ClientListItem } from "@/types/client";
+import { formatPhone, titleCase } from "@/utils/formatters";
 
 type ClientsClientProps = {
   initialClients: ClientListItem[];
@@ -480,7 +481,7 @@ function ClientCard({
           </p>
 
           <h2 className="mt-1 truncate text-xl font-bold text-white">
-            {client.name}
+            {titleCase(client.name)}
           </h2>
 
           <p className="mt-1 truncate text-xs text-zinc-500">
@@ -535,8 +536,7 @@ function ClientCard({
         <ContactLine
           icon={Phone}
           value={
-            client.phone ??
-            "Telefone não informado"
+            formatPhone(client.phone)
           }
         />
 

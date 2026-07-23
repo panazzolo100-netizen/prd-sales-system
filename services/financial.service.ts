@@ -4,11 +4,18 @@ import {
   updateFinancialRepository,
 } from "@/repositories/financial.repository";
 import { registerProjectEvent } from "@/services/project-timeline.service";
+import { toFinancialAttachmentResponses } from "@/services/financial-attachments.service";
 
 export async function listCompanyFinancials(
   companyId: string
 ) {
-  return findCompanyFinancials(companyId);
+  const financials = await findCompanyFinancials(companyId);
+  return Promise.all(
+    financials.map(async (financial) => ({
+      ...financial,
+      attachments: await toFinancialAttachmentResponses(financial.attachments, companyId),
+    }))
+  );
 }
 
 export async function getFinancialById(
@@ -26,7 +33,10 @@ export async function getFinancialById(
     );
   }
 
-  return financial;
+  return {
+    ...financial,
+    attachments: await toFinancialAttachmentResponses(financial.attachments, companyId),
+  };
 }
 
 export async function updateFinancialData(data: {

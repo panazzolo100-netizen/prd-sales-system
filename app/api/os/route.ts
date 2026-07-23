@@ -230,9 +230,9 @@ export async function POST(
               ),
 
             customerSignature:
-              nullableString(
-                body.customerSignature
-              ),
+              body.customerSignature === undefined
+                ? undefined
+                : nullableString(body.customerSignature),
 
             technicianName:
               nullableString(
@@ -240,9 +240,9 @@ export async function POST(
               ),
 
             technicianSignature:
-              nullableString(
-                body.technicianSignature
-              ),
+              body.technicianSignature === undefined
+                ? undefined
+                : nullableString(body.technicianSignature),
           }
         );
 

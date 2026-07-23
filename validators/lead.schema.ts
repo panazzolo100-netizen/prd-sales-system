@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LeadStatus } from "@/lib/generated/prisma/enums";
+import { OPPORTUNITY_SERVICE_TYPES } from "@/lib/opportunity-service-types";
 
 const optionalText = z
   .string()
@@ -46,6 +47,9 @@ export const createLeadSchema = z.object({
   state: optionalText,
 
   source: optionalText,
+
+  serviceType: z.enum(OPPORTUNITY_SERVICE_TYPES),
+  serviceDetails: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional().default({}),
 
   status: z
     .nativeEnum(LeadStatus)

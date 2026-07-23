@@ -71,6 +71,7 @@ export async function findProjectsByCompany(
             email: true,
             city: true,
             state: true,
+            address: true,
           },
         },
 
@@ -142,4 +143,20 @@ export async function findProjectById(
       companyId,
     },
   });
+}
+
+export async function findProjectDependencies(id: string, companyId: string) {
+  return prisma.project.findFirst({
+    where: { id, companyId },
+    select: {
+      id: true,
+      serviceOrder: { select: { id: true } },
+      financial: { select: { id: true, _count: { select: { installments: true, cashFlow: true, attachments: true } } } },
+      _count: { select: { documents: true, timeline: true } },
+    },
+  });
+}
+
+export async function deleteProject(id: string, companyId: string) {
+  return prisma.project.delete({ where: { id, companyId } });
 }

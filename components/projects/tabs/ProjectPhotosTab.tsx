@@ -46,6 +46,7 @@ type ServiceOrderPhoto = {
 
 type Props = {
   serviceOrderId: string;
+  onPhotosChange?: () => void;
 };
 
 type UploadForm = {
@@ -114,6 +115,7 @@ function formatFileSize(size: number) {
 
 export function ProjectPhotosTab({
   serviceOrderId,
+  onPhotosChange,
 }: Props) {
   const fileInputRef =
     useRef<HTMLInputElement | null>(
@@ -367,6 +369,7 @@ export function ProjectPhotosTab({
         uploadedPhoto,
         ...currentPhotos,
       ]);
+      onPhotosChange?.();
 
       clearSelectedFile();
 
@@ -442,6 +445,7 @@ export function ProjectPhotosTab({
             photo.id !== id
         )
       );
+      onPhotosChange?.();
 
       if (
         selectedPhoto?.id === id

@@ -51,6 +51,7 @@ type Props = {
   onProjectChange?: (
     project: ProjectListItem
   ) => void;
+  onDeleted?: (projectId: string) => void;
 };
 
 type ProjectFormData = {
@@ -175,6 +176,7 @@ export function ProjectDetailsDrawer({
   open,
   onClose,
   onProjectChange,
+  onDeleted,
 }: Props) {
   const [activeTab, setActiveTab] =
     useState<ProjectTab>("Resumo");
@@ -192,6 +194,7 @@ export function ProjectDetailsDrawer({
 
   const [saving, setSaving] =
     useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [feedback, setFeedback] =
     useState<FeedbackMessage>(null);
@@ -433,6 +436,23 @@ export function ProjectDetailsDrawer({
       maxWidthClassName="max-w-6xl"
     >
 
+      <div className="flex justify-end border-b border-white/[0.07] px-4 py-3 sm:px-6 lg:px-8">
+        <button type="button" disabled={deleting} onClick={async () => {
+          if (!window.confirm(`Excluir o projeto ${currentProject.title}? Esta ação não pode ser desfeita.`)) return;
+          setDeleting(true); setFeedback(null);
+          try {
+            const response = await fetch(`/api/projects?id=${currentProject.id}`, { method: "DELETE" });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error ?? "Não foi possível excluir o projeto.");
+            onDeleted?.(currentProject.id); onClose();
+          } catch (error) {
+            setFeedback({ type: "error", text: error instanceof Error ? error.message : "Não foi possível excluir o projeto." });
+          } finally { setDeleting(false); }
+        }} className="inline-flex items-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50">
+          <Trash2 size={16} /> {deleting ? "Excluindo..." : "Excluir projeto"}
+        </button>
+      </div>
+
               {feedback && (
         <div className="px-4 pt-5 sm:px-6 lg:px-8">
           <div
@@ -620,6 +640,7 @@ export function ProjectDetailsDrawer({
           "Ordem de Serviço" && (
           <ProjectServiceOrderTab
             project={currentProject}
+            onOpenProjectHistory={() => setActiveTab("Histórico")}
             onProjectChange={(
               updatedProject
             ) => {

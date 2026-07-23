@@ -7,12 +7,13 @@ import {
   LockKeyhole,
   Mail,
   ShieldCheck,
-  Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { CompanyLogo } from "@/components/layout/CompanyLogo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -73,22 +74,7 @@ export default function LoginPage() {
         <section className="hidden border-r border-white/5 p-14 lg:flex lg:flex-col lg:justify-between xl:p-20">
           <div>
             <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 shadow-lg shadow-orange-500/20">
-                <Zap
-                  size={23}
-                  strokeWidth={2.4}
-                />
-              </div>
-
-              <div>
-                <p className="text-xl font-black tracking-tight">
-                  PRD
-                </p>
-
-                <p className="text-xs text-zinc-500">
-                  Soluções em Engenharia
-                </p>
-              </div>
+              <CompanyLogo collapsed={false} />
             </div>
 
             <div className="mt-24 max-w-2xl">
@@ -133,22 +119,7 @@ export default function LoginPage() {
           <div className="w-full max-w-[470px]">
             <div className="mb-10 lg:hidden">
               <div className="inline-flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 shadow-lg shadow-orange-500/20">
-                  <Zap
-                    size={23}
-                    strokeWidth={2.4}
-                  />
-                </div>
-
-                <div>
-                  <p className="text-xl font-black">
-                    PRD ERP
-                  </p>
-
-                  <p className="text-xs text-zinc-500">
-                    Soluções em Engenharia
-                  </p>
-                </div>
+                <CompanyLogo collapsed={false} />
               </div>
             </div>
 
@@ -210,6 +181,13 @@ export default function LoginPage() {
                     >
                       Senha
                     </label>
+
+                    <Link
+                      href="/esqueci-minha-senha"
+                      className="text-sm font-semibold text-orange-500 transition hover:text-orange-400"
+                    >
+                      Esqueci minha senha
+                    </Link>
                   </div>
 
                   <div className="relative">

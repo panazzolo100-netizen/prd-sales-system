@@ -33,8 +33,8 @@ export function PhotoUpload({
       return;
     }
 
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setMessage("A imagem deve ter no máximo 10 MB.");
+    if (selectedFile.size > 20 * 1024 * 1024) {
+      setMessage("A imagem deve ter no máximo 20 MB.");
       return;
     }
 
@@ -149,7 +149,7 @@ export function PhotoUpload({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept=".jpg,.jpeg,.png,.webp"
         hidden
         onChange={(event) => {
           selectFile(

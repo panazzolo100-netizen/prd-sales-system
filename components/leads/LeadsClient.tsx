@@ -108,6 +108,7 @@ export function LeadsClient({
         onClose={() =>
           setSelectedLead(null)
         }
+        onDeleted={() => router.refresh()}
       />
 
       <LeadsHeader
