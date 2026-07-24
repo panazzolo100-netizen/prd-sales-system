@@ -7,8 +7,10 @@ import {
   deleteProject,
   findProjectsByCompany,
   updateProject,
+  updateProjectStatus,
   type UpdateProjectData,
 } from "@/repositories/projects.repository";
+import { assertStatusTransition } from "@/lib/kanban/status-transitions";
 import { registerProjectEvent } from "@/services/project-timeline.service";
 import {
   removeProjectDocument,
@@ -106,4 +108,16 @@ export async function deleteCompanyProject(id: string) {
 }
 async function getCurrentCompanyId() {
   return (await requirePermission(PERMISSIONS.PROJECTS)).companyId;
+}
+
+export async function changeProjectStatus(id: string, status: string, expectedUpdatedAt?: Date) {
+  const companyId = await getCurrentCompanyId();
+  const current = await findProjectById(id, companyId);
+  if (!current) throw new Error("Projeto não encontrado.");
+  assertStatusTransition("projects", current.status, status);
+  const result = await updateProjectStatus(id, companyId, status, expectedUpdatedAt);
+  if (result.kind === "conflict") throw new Error("CONFLICT");
+  if (result.kind === "not-found") throw new Error("Projeto não encontrado.");
+  await registerProjectEvent({ projectId: id, type: "PROJECT_STATUS_CHANGED", title: "Status do projeto alterado", description: `${current.status} → ${status}` });
+  return result.project;
 }
