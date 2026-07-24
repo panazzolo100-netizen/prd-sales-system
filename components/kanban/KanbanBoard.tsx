@@ -101,6 +101,9 @@ export function KanbanBoard({ eyebrow, title, description, items: initialItems, 
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "Não foi possível mover o card.");
+      setItems((all) => all.map((item) => item.id === id
+        ? { ...item, status: nextStatus, updatedAt: body.updatedAt ?? item.updatedAt }
+        : item));
       onStatusChanged?.(id, nextStatus);
       notify(true, "Status atualizado com sucesso.");
     } catch (error) {
