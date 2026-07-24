@@ -12,6 +12,13 @@ import {
 
 import { ProjectDetailsDrawer } from "@/components/projects/ProjectDetailsDrawer";
 import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
+import {
+  CardProgress,
+  CompactMetricCard,
+  OperationCardGrid,
+  OperationEmptyState,
+  OperationPageHeader,
+} from "@/components/operations/OperationListing";
 import type { ProjectListItem } from "@/types/project";
 
 type ProjectsClientProps = {
@@ -24,6 +31,7 @@ type StatusFilter =
   | "EM_ANDAMENTO"
   | "CONCLUIDO"
   | "CANCELADO";
+type SortFilter = "recentes" | "titulo";
 
 const statusOptions: {
   value: StatusFilter;
@@ -57,7 +65,6 @@ function normalizeStatus(status: string) {
     .toLocaleUpperCase("pt-BR")
     .replaceAll(" ", "_");
 }
-
 function getStatusStyle(status: string) {
   const normalized =
     normalizeStatus(status);
@@ -93,7 +100,6 @@ function getStatusStyle(status: string) {
       };
   }
 }
-
 export function ProjectsClient({
   initialProjects,
 }: ProjectsClientProps) {
@@ -115,6 +121,7 @@ export function ProjectsClient({
 
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("TODOS");
+  const [sortFilter, setSortFilter] = useState<SortFilter>("recentes");
 
   const filteredProjects = useMemo(() => {
     const normalizedSearch =
@@ -145,10 +152,15 @@ export function ProjectsClient({
 
         return matchesSearch && matchesStatus;
       }
+    ).sort((a, b) =>
+      sortFilter === "titulo"
+        ? a.title.localeCompare(b.title, "pt-BR")
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }, [
     projects,
     searchTerm,
+    sortFilter,
     statusFilter,
   ]);
 
@@ -188,11 +200,13 @@ export function ProjectsClient({
 
   const hasActiveFilters =
     searchTerm.trim().length > 0 ||
-    statusFilter !== "TODOS";
+    statusFilter !== "TODOS" ||
+    sortFilter !== "recentes";
 
     function clearFilters() {
     setSearchTerm("");
     setStatusFilter("TODOS");
+    setSortFilter("recentes");
   }
 
   function handleProjectChange(
@@ -215,58 +229,25 @@ export function ProjectsClient({
 
   return (
     <>
-      <div className="space-y-6">
-        <section className="rounded-3xl border border-white/[0.07] bg-zinc-900 p-5">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-500">
-            Operação
-          </p>
+      <div className="space-y-5">
+        <OperationPageHeader
+          breadcrumb="Operação / Projetos"
+          title="Projetos"
+          description="Acompanhe a evolução técnica e operacional dos projetos."
+        />
 
-          <h1 className="mt-2 text-4xl font-black text-white">
-            Projetos
-          </h1>
+        <section className="grid gap-3 sm:grid-cols-3">
+          <CompactMetricCard icon={FolderKanban} label="Total de projetos" value={metrics.total} />
+          <CompactMetricCard icon={Clock3} label="Em andamento" value={metrics.inProgress} tone="orange" />
+          <CompactMetricCard icon={CheckCircle2} label="Concluídos" value={metrics.completed} tone="green" />
+        </section>
 
-          <p className="mt-2 text-zinc-400">
-            Gestão técnica e operacional dos projetos da PRD Engenharia.
-          </p>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <MetricCard
-            icon={FolderKanban}
-            label="Projetos"
-            value={String(metrics.total)}
-            description="Total cadastrado"
-          />
-
-          <MetricCard
-            icon={Clock3}
-            label="Em andamento"
-            value={String(
-              metrics.inProgress
-            )}
-            description="Execução ativa"
-            highlight
-          />
-
-          <MetricCard
-            icon={CheckCircle2}
-            label="Concluídos"
-            value={String(
-              metrics.completed
-            )}
-            description="Projetos finalizados"
-          />
-
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-white/[0.07] bg-zinc-900/70 p-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(300px,1fr)_220px_auto]">
+      <section className="rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-2.5">
+        <div className="grid gap-2 md:grid-cols-[minmax(300px,1fr)_190px_170px_auto]">
           <div className="relative">
             <Search
-              size={18}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+              size={16}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600"
             />
 
             <input
@@ -278,7 +259,7 @@ export function ProjectsClient({
                 )
               }
               placeholder="Buscar projeto, cliente ou descrição..."
-              className="h-12 w-full rounded-xl border border-white/[0.07] bg-zinc-950 pl-11 pr-10 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/5"
+              className="h-10 w-full rounded-xl border border-white/[0.07] bg-zinc-950 pl-10 pr-10 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500/40"
             />
 
             {searchTerm && (
@@ -303,7 +284,7 @@ export function ProjectsClient({
                   .value as StatusFilter
               )
             }
-            className="h-12 rounded-xl border border-white/[0.07] bg-zinc-950 px-4 text-sm text-white outline-none transition focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/5"
+            className="h-10 rounded-xl border border-white/[0.07] bg-zinc-950 px-3 text-sm text-white outline-none transition focus:border-orange-500/40"
           >
             {statusOptions.map(
               (option) => (
@@ -317,11 +298,20 @@ export function ProjectsClient({
             )}
           </select>
 
+          <select
+            value={sortFilter}
+            onChange={(event) => setSortFilter(event.target.value as SortFilter)}
+            className="h-10 rounded-xl border border-white/[0.07] bg-zinc-950 px-3 text-sm text-white outline-none transition focus:border-orange-500/40"
+          >
+            <option value="recentes">Mais recentes</option>
+            <option value="titulo">Título A–Z</option>
+          </select>
+
           <button
             type="button"
             onClick={clearFilters}
             disabled={!hasActiveFilters}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-zinc-950 px-5 text-sm font-semibold text-zinc-300 transition hover:border-orange-500/30 hover:bg-orange-500/10 hover:text-orange-400 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-10 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold text-zinc-500 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             <RotateCcw size={16} />
 
@@ -329,7 +319,7 @@ export function ProjectsClient({
           </button>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] px-1 pt-2">
           <p className="text-sm text-zinc-500">
             Exibindo{" "}
             <strong className="text-white">
@@ -351,12 +341,13 @@ export function ProjectsClient({
       </section>
 
               {filteredProjects.length === 0 ? (
-          <EmptyState
-            hasFilters={hasActiveFilters}
-            onClear={clearFilters}
+          <OperationEmptyState
+            icon={FolderKanban}
+            title={hasActiveFilters ? "Nenhum projeto encontrado" : "Nenhum projeto cadastrado"}
+            description={hasActiveFilters ? "Ajuste ou limpe os filtros para continuar." : "Os projetos aparecerão aqui quando forem criados."}
           />
         ) : (
-          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <OperationCardGrid>
             {filteredProjects.map(
               (project) => (
                 <ProjectCard
@@ -372,7 +363,7 @@ export function ProjectsClient({
                 />
               )
             )}
-          </section>
+          </OperationCardGrid>
         )}
       </div>
 
@@ -426,15 +417,15 @@ function ProjectCard({
       }}
       role="button"
       tabIndex={0}
-      className="group relative cursor-pointer overflow-visible rounded-2xl border border-white/[0.07] bg-gradient-to-br from-zinc-950 to-zinc-900 p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+      className={`group relative min-h-[176px] cursor-pointer overflow-visible rounded-2xl border border-white/[0.08] bg-zinc-900 p-4 transition-all duration-200 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:rounded-t-2xl hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 md:p-5 ${normalizeStatus(project.status) === "CONCLUIDO" ? "before:bg-emerald-500" : normalizeStatus(project.status) === "CANCELADO" ? "before:bg-red-500" : "before:bg-orange-500"}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-[15px] font-bold text-white">
+          <h2 title={project.title} className="truncate text-base font-bold text-white">
             {project.title}
           </h2>
 
-          <p className="mt-0.5 truncate text-xs text-zinc-400">
+          <p title={project.client.name} className="mt-1 truncate text-sm text-zinc-400">
             {project.client.name}
           </p>
         </div>
@@ -459,124 +450,14 @@ function ProjectCard({
       </div>
 
       {project.description && (
-        <p className="mt-2.5 line-clamp-2 text-xs leading-4 text-zinc-500">
+        <p title={project.description} className="mt-4 line-clamp-2 text-sm leading-5 text-zinc-500">
           {project.description}
         </p>
       )}
 
-      <div className="mt-3.5">
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-zinc-500">{progress.completed} de {progress.total} etapas</span>
-          <span className="font-bold text-orange-400">
-            {progress.percentage}%
-          </span>
-        </div>
-
-        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-zinc-800">
-          <div
-            className="h-full rounded-full bg-orange-500 transition-all duration-500"
-            style={{
-              width: `${progress.percentage}%`,
-            }}
-          />
-        </div>
+      <div className="absolute inset-x-4 bottom-4 md:inset-x-5">
+        <CardProgress completed={progress.completed} total={progress.total} percentage={progress.percentage} />
       </div>
     </article>
-  );
-}
-
-type MetricCardProps = {
-  icon: typeof FolderKanban;
-  label: string;
-  value: string;
-  description: string;
-  highlight?: boolean;
-};
-
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  description,
-  highlight = false,
-}: MetricCardProps) {
-  return (
-    <div
-      className={`rounded-2xl border p-3.5 transition hover:-translate-y-0.5 ${
-        highlight
-          ? "border-orange-500/20 bg-orange-500/[0.06]"
-          : "border-white/[0.07] bg-zinc-950"
-      }`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          {label}
-        </p>
-
-        <div
-          className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-            highlight
-              ? "bg-orange-500/15 text-orange-400"
-              : "bg-zinc-900 text-zinc-500"
-          }`}
-        >
-          <Icon size={17} />
-        </div>
-      </div>
-
-      <p
-        className={`mt-2 truncate text-xl font-black ${
-          highlight
-            ? "text-orange-400"
-            : "text-white"
-        }`}
-      >
-        {value}
-      </p>
-
-      <p className="mt-1 text-xs text-zinc-600">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-type EmptyStateProps = {
-  hasFilters: boolean;
-  onClear: () => void;
-};
-
-function EmptyState({
-  hasFilters,
-  onClear,
-}: EmptyStateProps) {
-  return (
-    <section className="rounded-3xl border border-dashed border-white/[0.09] bg-zinc-950 p-12 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.07] bg-zinc-900 text-zinc-500">
-        <FolderKanban size={24} />
-      </div>
-
-      <h2 className="mt-5 text-xl font-bold text-white">
-        {hasFilters
-          ? "Nenhum projeto encontrado"
-          : "Nenhum projeto cadastrado"}
-      </h2>
-
-      <p className="mt-2 text-sm text-zinc-500">
-        {hasFilters
-          ? "Altere a pesquisa ou limpe os filtros."
-          : "Os projetos criados a partir dos clientes aparecerão aqui."}
-      </p>
-
-      {hasFilters && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="mt-5 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-400"
-        >
-          Limpar filtros
-        </button>
-      )}
-    </section>
   );
 }

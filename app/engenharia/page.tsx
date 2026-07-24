@@ -6,6 +6,14 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { createEngineeringProject, getEngineeringOverview } from "@/services/engineering.service";
 import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
 import { ENGINEERING_SERVICE_TYPES, engineeringTypeLabel } from "@/lib/engineering-service-types";
+import { CheckCircle2, FolderKanban, Search, Workflow } from "lucide-react";
+import {
+  CardProgress,
+  CompactMetricCard,
+  OperationCardGrid,
+  OperationEmptyState,
+  OperationPageHeader,
+} from "@/components/operations/OperationListing";
 
 function statusLabel(status: string) {
   switch (status) {
@@ -27,6 +35,24 @@ function statusLabel(status: string) {
     default:
       return status;
   }
+}
+
+function engineeringStatusClass(status: string) {
+  return {
+    CONCLUIDO: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+    EM_ANDAMENTO: "border-orange-500/20 bg-orange-500/10 text-orange-400",
+    AGUARDANDO: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+    CANCELADO: "border-red-500/20 bg-red-500/10 text-red-400",
+  }[status] ?? "border-sky-500/20 bg-sky-500/10 text-sky-400";
+}
+
+function engineeringAccentClass(status: string) {
+  return {
+    CONCLUIDO: "before:bg-emerald-500",
+    AGUARDANDO: "before:bg-amber-500",
+    CANCELADO: "before:bg-red-500",
+    NOVO: "before:bg-sky-500",
+  }[status] ?? "before:bg-orange-500";
 }
 
 async function createProject(formData: FormData) {
@@ -56,23 +82,39 @@ async function createProject(formData: FormData) {
   );
 }
 
-export default async function Engenharia() {
+export default async function Engenharia({
+  searchParams,
+}: {
+  searchParams: Promise<{ busca?: string; status?: string; ordem?: string }>;
+}) {
   const [projetos, clientes] = await getEngineeringOverview();
+  const params = await searchParams;
+  const busca = params.busca?.trim().toLocaleLowerCase("pt-BR") ?? "";
+  const status = params.status ?? "TODOS";
+  const ordem = params.ordem ?? "recentes";
+  const filtrados = projetos
+    .filter((projeto) =>
+      (!busca ||
+        projeto.title.toLocaleLowerCase("pt-BR").includes(busca) ||
+        projeto.client.name.toLocaleLowerCase("pt-BR").includes(busca)) &&
+      (status === "TODOS" || projeto.status === status)
+    )
+    .sort((a, b) =>
+      ordem === "titulo"
+        ? a.title.localeCompare(b.title, "pt-BR")
+        : 0
+    );
+  const emAndamento = projetos.filter((item) => item.status === "EM_ANDAMENTO").length;
+  const concluidos = projetos.filter((item) => item.status === "CONCLUIDO").length;
 
   return (
     <AppLayout>
-      <main className="space-y-8">
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <h1 className="text-4xl font-bold text-white">
-              Engenharia
-            </h1>
-
-            <p className="mt-2 text-zinc-400">
-              Projetos, homologações, ARTs e documentos técnicos.
-            </p>
-          </div>
-
+      <main className="space-y-5">
+        <OperationPageHeader
+          breadcrumb="Operação / Engenharia"
+          title="Engenharia"
+          description="Acompanhe projetos, homologações e evolução técnica."
+          action={
           <details className="group relative">
             <summary className="cursor-pointer list-none rounded-xl bg-orange-500 px-5 py-3 font-semibold text-white transition hover:bg-orange-600">
               Novo Projeto
@@ -167,10 +209,40 @@ export default async function Engenharia() {
               </form>
             </div>
           </details>
-        </div>
+          }
+        />
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {projetos.map((projeto) => {
+        <section className="grid gap-3 sm:grid-cols-3">
+          <CompactMetricCard icon={FolderKanban} label="Total de projetos" value={projetos.length} />
+          <CompactMetricCard icon={Workflow} label="Em andamento" value={emAndamento} tone="orange" />
+          <CompactMetricCard icon={CheckCircle2} label="Concluídos" value={concluidos} tone="green" />
+        </section>
+
+        <form className="grid gap-2 rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-2.5 md:grid-cols-[minmax(260px,1fr)_190px_170px_auto]">
+          <label className="relative">
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600" />
+            <input name="busca" defaultValue={params.busca} placeholder="Buscar projeto ou cliente..." className="h-10 w-full rounded-xl border border-white/[0.07] bg-zinc-950 pl-10 pr-3 text-sm text-white outline-none focus:border-orange-500/40" />
+          </label>
+          <select name="status" defaultValue={status} className="h-10 rounded-xl border border-white/[0.07] bg-zinc-950 px-3 text-sm text-white outline-none focus:border-orange-500/40">
+            <option value="TODOS">Todos os status</option>
+            <option value="NOVO">Novo</option>
+            <option value="EM_ANDAMENTO">Em andamento</option>
+            <option value="AGUARDANDO">Aguardando</option>
+            <option value="CONCLUIDO">Concluído</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+          <select name="ordem" defaultValue={ordem} className="h-10 rounded-xl border border-white/[0.07] bg-zinc-950 px-3 text-sm text-white outline-none focus:border-orange-500/40">
+            <option value="recentes">Mais recentes</option>
+            <option value="titulo">Título A–Z</option>
+          </select>
+          <div className="flex gap-2">
+            <button className="h-10 flex-1 rounded-xl bg-orange-500 px-4 text-sm font-bold text-white hover:bg-orange-600">Filtrar</button>
+            {(busca || status !== "TODOS" || ordem !== "recentes") && <Link href="/engenharia" className="inline-flex h-10 items-center rounded-xl px-3 text-xs font-semibold text-zinc-500 hover:bg-white/5 hover:text-white">Limpar</Link>}
+          </div>
+        </form>
+
+        {filtrados.length ? <OperationCardGrid>
+          {filtrados.map((projeto) => {
             const order = projeto.serviceOrder;
             const checklist = order ? [order.checklistArt, order.checklistProjectApproved, order.checklistMaterialsSeparated, order.checklistStructureInstalled, order.checklistModulesInstalled, order.checklistInverterInstalled, order.checklistDcCabling, order.checklistAcCabling, order.checklistCommissioning, order.checklistCustomerTraining, order.checklistDelivered] : [];
             const completed = checklist.filter(Boolean).length;
@@ -178,20 +250,20 @@ export default async function Engenharia() {
             return (
             <article
               key={projeto.id}
-              className="group relative overflow-visible rounded-2xl border border-white/[0.07] bg-gradient-to-br from-zinc-900 to-zinc-950 p-3.5 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-black/20"
+              className={`group relative min-h-[168px] overflow-visible rounded-2xl border border-white/[0.08] bg-zinc-900 p-4 transition duration-200 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:rounded-t-2xl hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-black/20 md:p-5 ${engineeringAccentClass(projeto.status)}`}
             >
               <Link href={`/engenharia/${projeto.id}`} aria-label={`Abrir ${projeto.title}`} className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500" />
               <div className="relative z-10 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="pointer-events-none truncate text-[15px] font-bold text-white">
+                  <h2 title={projeto.title} className="pointer-events-none truncate text-base font-bold text-white">
                     {projeto.title}
                   </h2>
-                  <p className="pointer-events-none mt-0.5 truncate text-xs text-zinc-400">
+                  <p title={projeto.client.name} className="pointer-events-none mt-1 truncate text-sm text-zinc-400">
                     {projeto.client.name}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <span className="pointer-events-none rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400">
+                  <span className={`pointer-events-none rounded-full border px-2 py-0.5 text-[10px] font-semibold ${engineeringStatusClass(projeto.status)}`}>
                     {statusLabel(projeto.status)}
                   </span>
                   <EntityDeleteButton
@@ -205,33 +277,21 @@ export default async function Engenharia() {
                   />
                 </div>
               </div>
-              <span className="pointer-events-none relative z-10 mt-2.5 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold text-cyan-300">
-                {engineeringTypeLabel(projeto.serviceType)}
-              </span>
-              <div className="pointer-events-none relative z-10 mt-3.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500">{completed} de 11 etapas</span>
-                  <span className="font-bold text-orange-400">{progress}%</span>
-                </div>
-                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-zinc-800">
-                  <div className={`h-full rounded-full ${progress === 100 ? "bg-emerald-500" : "bg-orange-500"}`} style={{ width: `${progress}%` }} />
-                </div>
+              <div className="pointer-events-none relative z-10 mt-4 flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400"><Workflow size={15} /></span>
+                <span className="inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-300">
+                  {engineeringTypeLabel(projeto.serviceType)}
+                </span>
+              </div>
+              <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10 md:inset-x-5">
+                <CardProgress completed={completed} total={11} percentage={progress} />
               </div>
             </article>
           );})}
-        </div>
-
-        {projetos.length === 0 && (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-10 text-center">
-            <h2 className="text-lg font-semibold text-white">
-              Nenhum projeto cadastrado
-            </h2>
-
-            <p className="mt-2 text-zinc-500">
-              Clique em Novo Projeto para cadastrar.
-            </p>
-          </div>
+        </OperationCardGrid> : (
+          <OperationEmptyState icon={FolderKanban} title="Nenhum projeto encontrado" description="Ajuste os filtros ou crie um novo projeto." />
         )}
+
       </main>
     </AppLayout>
   );
