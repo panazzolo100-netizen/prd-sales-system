@@ -22,6 +22,7 @@ import {
   PanelLeftOpen,
   Settings,
   Target,
+  UserCog,
   Users,
   Wrench,
 } from "lucide-react";
@@ -149,6 +150,13 @@ const grupos = [
         nome: "Configurações",
         rota: "/configuracoes",
         icon: Settings,
+        badge: "",
+        permission: PERMISSIONS.ADMINISTRATION,
+      },
+      {
+        nome: "Usuários",
+        rota: "/configuracoes/usuarios",
+        icon: UserCog,
         badge: "",
         permission: PERMISSIONS.ADMINISTRATION,
       },

@@ -11,6 +11,7 @@ import {
   Menu,
   Settings,
   Target,
+  UserCog,
   Users,
   X,
 } from "lucide-react";
@@ -40,6 +41,7 @@ const links: Array<{
   { href: "/financeiro", label: "Financeiro", icon: DollarSign, permission: PERMISSIONS.FINANCIAL },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3, permission: PERMISSIONS.REPORTS },
   { href: "/configuracoes", label: "Configurações", icon: Settings, permission: PERMISSIONS.ADMINISTRATION },
+  { href: "/configuracoes/usuarios", label: "Usuários", icon: UserCog, permission: PERMISSIONS.ADMINISTRATION },
 ];
 
 export function MobileNav({ role }: { role: AppRole }) {
