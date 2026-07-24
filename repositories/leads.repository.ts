@@ -329,10 +329,21 @@ export async function deleteLead(
   id: string,
   companyId: string
 ) {
-  return prisma.lead.delete({
-    where: {
-      id,
-      companyId,
-    },
+  return prisma.$transaction(async (transaction) => {
+    await transaction.activity.deleteMany({
+      where: {
+        leadId: id,
+        lead: {
+          companyId,
+        },
+      },
+    });
+
+    return transaction.lead.delete({
+      where: {
+        id,
+        companyId,
+      },
+    });
   });
 }
