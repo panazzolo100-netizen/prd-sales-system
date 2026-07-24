@@ -2,23 +2,17 @@
 
 import { useMemo, useState } from "react";
 import {
-  Building2,
   CheckCircle2,
-  CircleDollarSign,
   Clock3,
-  FileText,
   FolderKanban,
-  MapPin,
   RotateCcw,
   Search,
-  UserRound,
-  Wrench,
   X,
 } from "lucide-react";
 
 import { ProjectDetailsDrawer } from "@/components/projects/ProjectDetailsDrawer";
+import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
 import type { ProjectListItem } from "@/types/project";
-import { formatPhone } from "@/utils/formatters";
 
 type ProjectsClientProps = {
   initialProjects: ProjectListItem[];
@@ -30,11 +24,6 @@ type StatusFilter =
   | "EM_ANDAMENTO"
   | "CONCLUIDO"
   | "CANCELADO";
-
-type ServiceOrderFilter =
-  | "TODOS"
-  | "COM_OS"
-  | "SEM_OS";
 
 const statusOptions: {
   value: StatusFilter;
@@ -105,43 +94,6 @@ function getStatusStyle(status: string) {
   }
 }
 
-function formatDate(
-  value: Date | string
-) {
-  return new Intl.DateTimeFormat(
-    "pt-BR"
-  ).format(new Date(value));
-}
-
-function daysSince(
-  value: Date | string
-) {
-  const date = new Date(value);
-
-  const difference =
-    Date.now() - date.getTime();
-
-  return Math.max(
-    0,
-    Math.floor(
-      difference /
-        (1000 * 60 * 60 * 24)
-    )
-  );
-}
-
-function formatDays(days: number) {
-  if (days === 0) {
-    return "Hoje";
-  }
-
-  if (days === 1) {
-    return "Há 1 dia";
-  }
-
-  return `Há ${days} dias`;
-}
-
 export function ProjectsClient({
   initialProjects,
 }: ProjectsClientProps) {
@@ -163,12 +115,6 @@ export function ProjectsClient({
 
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("TODOS");
-
-  const [
-    serviceOrderFilter,
-    setServiceOrderFilter,
-  ] =
-    useState<ServiceOrderFilter>("TODOS");
 
   const filteredProjects = useMemo(() => {
     const normalizedSearch =
@@ -197,29 +143,12 @@ export function ProjectsClient({
           statusFilter === "TODOS" ||
           normalizedStatus === statusFilter;
 
-        const hasServiceOrder =
-          project.serviceOrder !== null;
-
-        const matchesServiceOrder =
-          serviceOrderFilter === "TODOS" ||
-          (serviceOrderFilter ===
-            "COM_OS" &&
-            hasServiceOrder) ||
-          (serviceOrderFilter ===
-            "SEM_OS" &&
-            !hasServiceOrder);
-
-        return (
-          matchesSearch &&
-          matchesStatus &&
-          matchesServiceOrder
-        );
+        return matchesSearch && matchesStatus;
       }
     );
   }, [
     projects,
     searchTerm,
-    serviceOrderFilter,
     statusFilter,
   ]);
 
@@ -250,45 +179,20 @@ export function ProjectsClient({
         }
       ).length;
 
-    const withServiceOrder =
-      projects.filter(
-        (project) =>
-          project.serviceOrder !== null
-      ).length;
-
-    const withFinancial =
-      projects.filter(
-        (project) =>
-          project.financial !== null
-      ).length;
-
-    const totalDocuments =
-      projects.reduce(
-        (totalDocuments, project) =>
-          totalDocuments +
-          project.documents.length,
-        0
-      );
-
     return {
       total,
       inProgress,
       completed,
-      withServiceOrder,
-      withFinancial,
-      totalDocuments,
     };
   }, [projects]);
 
   const hasActiveFilters =
     searchTerm.trim().length > 0 ||
-    statusFilter !== "TODOS" ||
-    serviceOrderFilter !== "TODOS";
+    statusFilter !== "TODOS";
 
     function clearFilters() {
     setSearchTerm("");
     setStatusFilter("TODOS");
-    setServiceOrderFilter("TODOS");
   }
 
   function handleProjectChange(
@@ -327,7 +231,7 @@ export function ProjectsClient({
           </p>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <MetricCard
             icon={FolderKanban}
             label="Projetos"
@@ -354,37 +258,11 @@ export function ProjectsClient({
             description="Projetos finalizados"
           />
 
-          <MetricCard
-            icon={Wrench}
-            label="Com OS"
-            value={String(
-              metrics.withServiceOrder
-            )}
-            description="Ordens vinculadas"
-          />
-
-          <MetricCard
-            icon={CircleDollarSign}
-            label="Financeiro"
-            value={String(
-              metrics.withFinancial
-            )}
-            description="Registros vinculados"
-          />
-
-          <MetricCard
-            icon={FileText}
-            label="Documentos"
-            value={String(
-              metrics.totalDocuments
-            )}
-            description="Arquivos cadastrados"
-          />
         </div>
       </section>
 
       <section className="rounded-3xl border border-white/[0.07] bg-zinc-900/70 p-4">
-        <div className="grid gap-3 xl:grid-cols-[minmax(300px,1fr)_220px_220px_auto]">
+        <div className="grid gap-3 md:grid-cols-[minmax(300px,1fr)_220px_auto]">
           <div className="relative">
             <Search
               size={18}
@@ -439,29 +317,6 @@ export function ProjectsClient({
             )}
           </select>
 
-          <select
-            value={serviceOrderFilter}
-            onChange={(event) =>
-              setServiceOrderFilter(
-                event.target
-                  .value as ServiceOrderFilter
-              )
-            }
-            className="h-12 rounded-xl border border-white/[0.07] bg-zinc-950 px-4 text-sm text-white outline-none transition focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/5"
-          >
-            <option value="TODOS">
-              Todas as ordens
-            </option>
-
-            <option value="COM_OS">
-              Com ordem de serviço
-            </option>
-
-            <option value="SEM_OS">
-              Sem ordem de serviço
-            </option>
-          </select>
-
           <button
             type="button"
             onClick={clearFilters}
@@ -501,7 +356,7 @@ export function ProjectsClient({
             onClear={clearFilters}
           />
         ) : (
-          <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredProjects.map(
               (project) => (
                 <ProjectCard
@@ -510,6 +365,10 @@ export function ProjectsClient({
                   onOpen={
                     setSelectedProject
                   }
+                  onDeleted={(projectId) => {
+                    setProjects((current) => current.filter((item) => item.id !== projectId));
+                    if (selectedProject?.id === projectId) setSelectedProject(null);
+                  }}
                 />
               )
             )}
@@ -538,30 +397,18 @@ export function ProjectsClient({
 
 type ProjectCardProps = {
   project: ProjectListItem;
-
-  onOpen: (
-    project: ProjectListItem
-  ) => void;
+  onOpen: (project: ProjectListItem) => void;
+  onDeleted: (projectId: string) => void;
 };
 
 
 function ProjectCard({
   project,
   onOpen,
+  onDeleted,
 }: ProjectCardProps) {
   const status = getStatusStyle(
     project.status
-  );
-
-  const location = [
-    project.client.city,
-    project.client.state,
-  ]
-    .filter(Boolean)
-    .join(" - ");
-
-  const stoppedDays = daysSince(
-    project.updatedAt
   );
 
   const progress =
@@ -574,15 +421,16 @@ function ProjectCard({
   return (
     <article
       onClick={() => onOpen(project)}
-      className="group cursor-pointer rounded-3xl border border-white/[0.07] bg-zinc-950 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/30 hover:shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") onOpen(project);
+      }}
+      role="button"
+      tabIndex={0}
+      className="group relative cursor-pointer rounded-2xl border border-white/[0.07] bg-zinc-950 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-orange-500">
-            Projeto
-          </p>
-
-          <h2 className="mt-2 truncate text-xl font-bold text-white">
+          <h2 className="truncate text-base font-bold text-white">
             {project.title}
           </h2>
 
@@ -592,24 +440,27 @@ function ProjectCard({
         </div>
 
         <span
-          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${status.className}`}
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status.className}`}
         >
           {status.label}
         </span>
       </div>
 
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between text-xs">
-          <span className="font-semibold uppercase tracking-wide text-zinc-500">
-            Progresso da obra
-          </span>
+      {project.description && (
+        <p className="mt-3 line-clamp-2 text-sm leading-5 text-zinc-500">
+          {project.description}
+        </p>
+      )}
 
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-zinc-500">{progress.completed} de {progress.total} etapas</span>
           <span className="font-bold text-orange-400">
             {progress.percentage}%
           </span>
         </div>
 
-        <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-zinc-800">
           <div
             className="h-full rounded-full bg-orange-500 transition-all duration-500"
             style={{
@@ -617,145 +468,20 @@ function ProjectCard({
             }}
           />
         </div>
-
-        <p className="mt-2 text-xs text-zinc-500">
-          {progress.completed} de {progress.total} etapas concluídas
-        </p>
       </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <InfoBox
-          label="Documentos"
-          value={String(
-            project.documents.length
-          )}
-        />
-
-        <InfoBox
-          label="Ordem de serviço"
-          value={
-            project.serviceOrder
-              ? "Criada"
-              : "Pendente"
-          }
-          highlight={
-            project.serviceOrder !== null
-          }
-        />
-
-        <InfoBox
-          label="Financeiro"
-          value={
-            project.financial
-              ? "Vinculado"
-              : "Pendente"
-          }
-        />
-
-        <InfoBox
-          label="Atualização"
-          value={formatDays(
-            stoppedDays
-          )}
+      <div className="mt-3 flex justify-end" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+        <EntityDeleteButton
+          endpoint={`/api/projects?id=${encodeURIComponent(project.id)}`}
+          entityName={`${project.title} — ${project.client.name}`}
+          buttonLabel="Excluir projeto"
+          consequence="Etapas, eventos e documentos próprios serão removidos, inclusive seus arquivos no Storage. Cliente e lead serão preservados. Ordem de Serviço ou financeiro bloqueiam a exclusão."
+          successMessage="Projeto excluído com sucesso."
+          onDeleted={() => onDeleted(project.id)}
+          iconOnly
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-red-500/10 hover:text-red-400"
         />
       </div>
-
-      {project.description && (
-        <p className="mt-5 line-clamp-2 text-sm leading-6 text-zinc-500">
-          {project.description}
-        </p>
-      )}
-
-      <div className="mt-5 space-y-3 border-t border-white/[0.06] pt-4">
-        <ContactLine
-          icon={Building2}
-          value={project.client.name}
-        />
-
-        <ContactLine
-          icon={MapPin}
-          value={
-            location ||
-            "Localização não informada"
-          }
-        />
-
-        <ContactLine
-          icon={UserRound}
-          value={
-            (project.client.phone ? formatPhone(project.client.phone) : null) ??
-            project.client.email ??
-            "Contato não informado"
-          }
-        />
-      </div>
-
-      <p className="mt-4 text-xs text-zinc-600">
-        Criado em{" "}
-        {formatDate(
-          project.createdAt
-        )}
-      </p>
     </article>
-  );
-}
-
-type ContactLineProps = {
-  icon: typeof Building2;
-  value: string;
-};
-
-function ContactLine({
-  icon: Icon,
-  value,
-}: ContactLineProps) {
-  return (
-    <div className="flex items-center gap-2 text-sm text-zinc-400">
-      <Icon
-        size={15}
-        className="shrink-0 text-zinc-600"
-      />
-
-      <span className="truncate">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-type InfoBoxProps = {
-  label: string;
-  value: string;
-  highlight?: boolean;
-};
-
-function InfoBox({
-  label,
-  value,
-  highlight = false,
-}: InfoBoxProps) {
-  return (
-    <div
-      className={`rounded-xl border p-3 ${
-        highlight
-          ? "border-orange-500/15 bg-orange-500/[0.05]"
-          : "border-white/[0.06] bg-zinc-900/70"
-      }`}
-    >
-      <p className="text-[11px] uppercase tracking-wide text-zinc-600">
-        {label}
-      </p>
-
-      <p
-        className={`mt-1 truncate text-sm font-bold ${
-          highlight
-            ? "text-orange-400"
-            : "text-white"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
   );
 }
 

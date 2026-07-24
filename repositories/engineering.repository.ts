@@ -123,7 +123,7 @@ export async function findEngineeringProjectDetails(projectId: string, companyId
 }
 
 export async function findEngineeringOverview(companyId: string) {
-  return Promise.all([prisma.project.findMany({ where: { companyId }, include: { client: { select: { id: true, name: true, phone: true, city: true, state: true } }, serviceOrder: { include: { photos: { select: { id: true } } } }, _count: { select: { documents: true } } }, orderBy: { createdAt: "desc" } }), prisma.client.findMany({ where: { companyId }, orderBy: { name: "asc" }, select: { id: true, name: true } })]);
+  return Promise.all([prisma.project.findMany({ where: { companyId }, select: { id: true, title: true, status: true, serviceType: true, client: { select: { id: true, name: true } }, serviceOrder: { select: { checklistArt: true, checklistProjectApproved: true, checklistMaterialsSeparated: true, checklistStructureInstalled: true, checklistModulesInstalled: true, checklistInverterInstalled: true, checklistDcCabling: true, checklistAcCabling: true, checklistCommissioning: true, checklistCustomerTraining: true, checklistDelivered: true } } }, orderBy: { createdAt: "desc" } }), prisma.client.findMany({ where: { companyId }, orderBy: { name: "asc" }, select: { id: true, name: true } })]);
 }
 
 export async function createEngineeringProjectRepository(data: { companyId: string; clientId: string; serviceType: string; title: string; description: string | null }) {

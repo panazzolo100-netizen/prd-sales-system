@@ -4,15 +4,8 @@ import { redirect } from "next/navigation";
 
 import { AppLayout } from "@/components/layout/AppLayout";
 import { createEngineeringProject, getEngineeringOverview } from "@/services/engineering.service";
-import { ProgressBar } from "@/components/ui/erp";
 import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
-import { Camera, FileText, UserRound, UsersRound } from "lucide-react";
 import { ENGINEERING_SERVICE_TYPES, engineeringTypeLabel } from "@/lib/engineering-service-types";
-import { formatPhone } from "@/utils/formatters";
-
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 function statusLabel(status: string) {
   switch (status) {
@@ -176,100 +169,55 @@ export default async function Engenharia() {
           </details>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {projetos.map((projeto) => {
             const order = projeto.serviceOrder;
             const checklist = order ? [order.checklistArt, order.checklistProjectApproved, order.checklistMaterialsSeparated, order.checklistStructureInstalled, order.checklistModulesInstalled, order.checklistInverterInstalled, order.checklistDcCabling, order.checklistAcCabling, order.checklistCommissioning, order.checklistCustomerTraining, order.checklistDelivered] : [];
             const completed = checklist.filter(Boolean).length;
             const progress = checklist.length ? Math.round(completed / checklist.length * 100) : 0;
-            const isLate = Boolean(order?.scheduledDate && order.scheduledDate < new Date() && order.status !== "CONCLUIDA");
             return (
-            <div
+            <article
               key={projeto.id}
-              className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900 to-zinc-950 p-5 shadow-xl shadow-black/10 transition duration-200 hover:-translate-y-1 ${isLate ? "border-red-500/30" : "border-white/[0.07] hover:border-orange-500/35"}`}
+              className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-br from-zinc-900 to-zinc-950 p-4 shadow-lg shadow-black/10 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/35"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">
+              <Link href={`/engenharia/${projeto.id}`} aria-label={`Abrir ${projeto.title}`} className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500" />
+              <div className="pointer-events-none relative z-10 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="truncate text-base font-bold text-white">
                     {projeto.title}
                   </h2>
-                  <span className="mt-2 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold text-cyan-300">{engineeringTypeLabel(projeto.serviceType)}</span>
-
-                  <p className="mt-1 text-zinc-400">
+                  <p className="mt-1 truncate text-sm text-zinc-400">
                     {projeto.client.name}
                   </p>
                 </div>
-
-                <span className="rounded-full bg-orange-500/15 px-3 py-1 text-xs font-semibold text-orange-500">
-                  {statusLabel(
-                    projeto.status
-                  )}
+                <span className="shrink-0 rounded-full bg-orange-500/15 px-2.5 py-1 text-[11px] font-semibold text-orange-500">
+                  {statusLabel(projeto.status)}
                 </span>
               </div>
-
-              {projeto.description && (
-                <p className="mt-5 line-clamp-3 text-sm leading-6 text-zinc-300">
-                  {projeto.description}
-                </p>
-              )}
-
-              <div className="mt-5 rounded-xl border border-white/[0.06] bg-black/20 p-4"><ProgressBar value={progress} label={`${completed} de 11 etapas`} tone={progress === 100 ? "green" : isLate ? "red" : "orange"} /><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><span className="flex items-center gap-2 text-zinc-500"><UserRound size={14} />{order?.responsible ?? "Sem responsável"}</span><span className="flex items-center gap-2 text-zinc-500"><UsersRound size={14} />{order?.team ?? "Sem equipe"}</span><span className="flex items-center gap-2 text-zinc-500"><Camera size={14} />{order?.photos.length ?? 0} foto(s)</span><span className="flex items-center gap-2 text-zinc-500"><FileText size={14} />{projeto._count.documents} documento(s)</span></div>{isLate && <p className="mt-3 text-xs font-bold text-red-400">Prazo operacional atrasado</p>}</div>
-
-              <div className="mt-6 space-y-3 border-t border-zinc-800 pt-5 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-zinc-500">
-                    Local
-                  </span>
-
-                  <span className="text-right text-zinc-200">
-                    {projeto.client.city
-                      ? `${projeto.client.city}${
-                          projeto.client.state
-                            ? ` - ${projeto.client.state}`
-                            : ""
-                        }`
-                      : "-"}
-                  </span>
+              <span className="pointer-events-none relative z-10 mt-3 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-300">
+                {engineeringTypeLabel(projeto.serviceType)}
+              </span>
+              <div className="pointer-events-none relative z-10 mt-5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500">{completed} de 11 etapas</span>
+                  <span className="font-bold text-orange-400">{progress}%</span>
                 </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-zinc-500">
-                    Telefone
-                  </span>
-
-                  <span className="text-zinc-200">
-                    {formatPhone(projeto.client.phone)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-zinc-500">
-                    Criado em
-                  </span>
-
-                  <span className="text-zinc-200">
-                    {formatDate(
-                      projeto.createdAt
-                    )}
-                  </span>
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-zinc-800">
+                  <div className={`h-full rounded-full ${progress === 100 ? "bg-emerald-500" : "bg-orange-500"}`} style={{ width: `${progress}%` }} />
                 </div>
               </div>
-
-              <Link
-                href={`/engenharia/${projeto.id}`}
-                className="mt-6 block w-full rounded-xl bg-zinc-800 px-4 py-3 text-center font-semibold text-white transition hover:bg-orange-500"
-              >
-                Abrir Projeto
-              </Link>
-              <EntityDeleteButton
-                endpoint={`/api/projects?id=${encodeURIComponent(projeto.id)}`}
-                entityName={`${projeto.title} — ${projeto.client.name}`}
-                buttonLabel="Excluir projeto"
-                consequence="Etapas, eventos e documentos próprios serão removidos, inclusive seus arquivos no Storage. Cliente e lead serão preservados. Ordem de Serviço ou financeiro bloqueiam a exclusão."
-                successMessage="Projeto excluído com sucesso."
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
-              />
-            </div>
+              <div className="relative z-20 mt-4 flex justify-end">
+                <EntityDeleteButton
+                  endpoint={`/api/projects?id=${encodeURIComponent(projeto.id)}`}
+                  entityName={`${projeto.title} — ${projeto.client.name}`}
+                  buttonLabel="Excluir projeto"
+                  consequence="Etapas, eventos e documentos próprios serão removidos, inclusive seus arquivos no Storage. Cliente e lead serão preservados. Ordem de Serviço ou financeiro bloqueiam a exclusão."
+                  successMessage="Projeto excluído com sucesso."
+                  iconOnly
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-red-500/10 hover:text-red-400"
+                />
+              </div>
+            </article>
           );})}
         </div>
 

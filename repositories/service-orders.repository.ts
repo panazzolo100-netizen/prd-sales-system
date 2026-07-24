@@ -9,16 +9,24 @@ export async function findServiceOrdersByCompany(
       companyId,
     },
 
-    include: {
+    select: {
+      id: true,
+      number: true,
+      title: true,
+      status: true,
+      responsible: true,
+      scheduledDate: true,
+      customerSignature: true,
+      technicianSignature: true,
       project: {
-        include: {
-          client: true,
+        select: {
+          client: {
+            select: {
+              name: true,
+            },
+          },
         },
       },
-
-      photos: true,
-
-      timeline: true,
     },
 
     orderBy: {

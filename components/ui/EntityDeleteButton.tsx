@@ -17,6 +17,7 @@ type Props = {
   successMessage: string;
   onDeleted?: () => void;
   className?: string;
+  iconOnly?: boolean;
 };
 
 export function EntityDeleteButton({
@@ -27,6 +28,7 @@ export function EntityDeleteButton({
   successMessage,
   onDeleted,
   className,
+  iconOnly = false,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -80,6 +82,8 @@ export function EntityDeleteButton({
     <>
       <button
         type="button"
+        aria-label={iconOnly ? buttonLabel : undefined}
+        title={iconOnly ? buttonLabel : undefined}
         onClick={() => {
           setResult(null);
           setOpen(true);
@@ -90,7 +94,7 @@ export function EntityDeleteButton({
         }
       >
         <Trash2 size={16} />
-        {buttonLabel}
+        {iconOnly ? <span className="sr-only">{buttonLabel}</span> : buttonLabel}
       </button>
 
       {open && (
