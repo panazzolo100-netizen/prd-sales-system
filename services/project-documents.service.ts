@@ -1,4 +1,8 @@
-import { getCurrentAppUser } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
+async function getCurrentAppUser() {
+  return requirePermission(PERMISSIONS.PROJECTS);
+}
 import { ProjectDocumentType } from "@/lib/generated/prisma/enums";
 import { removeStoredProjectDocument } from "@/lib/project-document-storage";
 import {

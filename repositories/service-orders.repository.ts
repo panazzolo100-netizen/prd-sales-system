@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { clientServiceOrderScope } from "@/lib/auth/data-scope";
 
 export async function findServiceOrdersByCompany(
   companyId: string
@@ -155,17 +156,70 @@ export async function findServiceOrderChecklist(
 
 export async function findServiceOrderSignatures(
   id: string,
-  companyId: string
+  companyId: string,
+  clientId?: string
 ) {
   return prisma.serviceOrder.findFirst({
-    where: { id, companyId },
+    where: {
+      id,
+      companyId,
+      ...(clientId ? clientServiceOrderScope(companyId, clientId, id) : {}),
+    },
     select: {
+      status: true,
       customerName: true,
       customerDocument: true,
       customerSignature: true,
       technicianName: true,
       technicianSignature: true,
       signedAt: true,
+    },
+  });
+}
+
+export async function findClientServiceOrders(companyId: string, clientId: string) {
+  return prisma.serviceOrder.findMany({
+    where: clientServiceOrderScope(companyId, clientId),
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true, number: true, title: true, status: true,
+      scheduledDate: true, completedDate: true, services: true,
+      signedAt: true, customerSignature: true,
+      checklistArt: true, checklistProjectApproved: true,
+      checklistMaterialsSeparated: true, checklistStructureInstalled: true,
+      checklistModulesInstalled: true, checklistInverterInstalled: true,
+      checklistDcCabling: true, checklistAcCabling: true,
+      checklistCommissioning: true, checklistCustomerTraining: true,
+      checklistDelivered: true,
+      project: { select: { title: true } },
+    },
+  });
+}
+
+export async function findClientServiceOrder(
+  id: string,
+  companyId: string,
+  clientId: string
+) {
+  return prisma.serviceOrder.findFirst({
+    where: clientServiceOrderScope(companyId, clientId, id),
+    select: {
+      id: true, number: true, title: true, status: true,
+      scheduledDate: true, completedDate: true, services: true,
+      signedAt: true, customerName: true, customerDocument: true,
+      customerSignature: true,
+      checklistArt: true, checklistProjectApproved: true,
+      checklistMaterialsSeparated: true, checklistStructureInstalled: true,
+      checklistModulesInstalled: true, checklistInverterInstalled: true,
+      checklistDcCabling: true, checklistAcCabling: true,
+      checklistCommissioning: true, checklistCustomerTraining: true,
+      checklistDelivered: true,
+      project: {
+        select: {
+          title: true,
+          client: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 }

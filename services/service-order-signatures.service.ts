@@ -1,4 +1,4 @@
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import {
   MAX_SIGNATURE_SIZE_BYTES,
   SIGNATURE_ALLOWED_MIME_TYPES,
@@ -16,6 +16,7 @@ import {
   updateServiceOrderSignatures,
 } from "@/repositories/service-orders.repository";
 import { registerServiceOrderEvent } from "@/services/service-order-timeline.service";
+import { requirePermission } from "@/services/auth.service";
 
 export type ServiceOrderSignatureType = "client" | "technician";
 
@@ -122,9 +123,25 @@ export async function saveServiceOrderSignatures(data: {
   technicianName?: string | null;
   technicianSignature?: string | null;
 }) {
-  const companyId = await getCurrentCompanyId();
-  const current = await findServiceOrderSignatures(data.id, companyId);
+  const user = await requirePermission(PERMISSIONS.CLIENT_SIGN_SERVICE_ORDER);
+  const companyId = user.companyId;
+  const current = await findServiceOrderSignatures(
+    data.id,
+    companyId,
+    user.role === "CLIENTE" ? user.clientId ?? undefined : undefined
+  );
   if (!current) throw new Error("Ordem de Serviço não encontrada.");
+
+  if (current.status === "CANCELADA") {
+    throw new Error("Esta Ordem de Serviço não está disponível para assinatura.");
+  }
+  if (
+    user.role === "CLIENTE" &&
+    (data.technicianName !== undefined ||
+      data.technicianSignature !== undefined)
+  ) {
+    throw new Error("O cliente não pode alterar a assinatura do técnico.");
+  }
 
   const uploaded: Array<{ type: ServiceOrderSignatureType; reference: string }> = [];
   async function resolveInput(
@@ -174,7 +191,10 @@ export async function saveServiceOrderSignatures(data: {
       customerName: data.customerName?.trim() || null,
       customerDocument: data.customerDocument?.trim() || null,
       customerSignature,
-      technicianName: data.technicianName?.trim() || null,
+      technicianName:
+        user.role === "CLIENTE"
+          ? current.technicianName
+          : data.technicianName?.trim() || null,
       technicianSignature,
       signedAt: hasSignature ? current.signedAt ?? new Date() : null,
     });
@@ -236,8 +256,16 @@ export async function resolveServiceOrderSignature(
   serviceOrderId: string,
   type: ServiceOrderSignatureType
 ) {
-  const companyId = await getCurrentCompanyId();
-  const current = await findServiceOrderSignatures(serviceOrderId, companyId);
+  const user = await requirePermission(PERMISSIONS.CLIENT_SIGN_SERVICE_ORDER);
+  if (user.role === "CLIENTE" && type !== "client") {
+    throw new Error("Assinatura não encontrada.");
+  }
+  const companyId = user.companyId;
+  const current = await findServiceOrderSignatures(
+    serviceOrderId,
+    companyId,
+    user.role === "CLIENTE" ? user.clientId ?? undefined : undefined
+  );
   if (!current) throw new Error("Ordem de Serviço não encontrada.");
   const reference = type === "client" ? current.customerSignature : current.technicianSignature;
   if (!reference) throw new Error("Assinatura não encontrada.");

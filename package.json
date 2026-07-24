@@ -8,6 +8,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint"
+    ,"test:access": "node --experimental-strip-types --test tests/access-control.test.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

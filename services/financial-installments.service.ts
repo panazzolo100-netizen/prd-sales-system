@@ -1,6 +1,7 @@
 import { createInstallments, deleteInstallments, listInstallments, updateInstallment } from "@/repositories/financial-installments.repository";
 import { findFinancialById } from "@/repositories/financial.repository";
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 import { registerProjectEvent } from "@/services/project-timeline.service";
 
 export async function generateInstallments(data: { financialId: string; totalValue: number; quantity: number; firstDueDate: Date; replaceExisting?: boolean }) {
@@ -26,3 +27,6 @@ export async function generateInstallments(data: { financialId: string; totalVal
 
 export async function getInstallments(financialId: string) { return listInstallments(financialId); }
 export async function receiveInstallment(id: string, notes?: string) { return updateInstallment(id, { paidAt: new Date(), status: "PAGO", notes: notes?.trim() || null }); }
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.FINANCIAL)).companyId;
+}

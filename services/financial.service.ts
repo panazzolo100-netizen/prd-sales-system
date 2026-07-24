@@ -5,7 +5,8 @@ import {
   findFinancialById,
   updateFinancialRepository,
 } from "@/repositories/financial.repository";
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 import { registerProjectEvent } from "@/services/project-timeline.service";
 import {
   removeFinancialAttachment,
@@ -182,4 +183,7 @@ export async function deleteCompanyFinancial(id: string) {
   }
 
   return deleted;
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.FINANCIAL)).companyId;
 }

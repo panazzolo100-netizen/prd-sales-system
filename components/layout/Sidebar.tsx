@@ -28,6 +28,12 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 import { CompanyLogo } from "@/components/layout/CompanyLogo";
+import {
+  type AppRole,
+  type Permission,
+  PERMISSIONS,
+  canAccessModule,
+} from "@/lib/auth/permissions";
 
 const grupos = [
   {
@@ -38,6 +44,7 @@ const grupos = [
         rota: "/",
         icon: Home,
         badge: "",
+        permission: PERMISSIONS.DASHBOARD_COMMERCIAL,
       },
     ],
   },
@@ -49,24 +56,28 @@ const grupos = [
         rota: "/leads",
         icon: Target,
         badge: "",
+        permission: PERMISSIONS.COMMERCIAL,
       },
       {
         nome: "Pipeline",
         rota: "/pipeline",
         icon: BarChart3,
         badge: "",
+        permission: PERMISSIONS.COMMERCIAL,
       },
       {
         nome: "Clientes",
         rota: "/clientes",
         icon: Users,
         badge: "",
+        permission: PERMISSIONS.COMMERCIAL,
       },
       {
         nome: "Propostas",
         rota: "/propostas",
         icon: FileText,
         badge: "",
+        permission: PERMISSIONS.COMMERCIAL,
       },
     ],
   },
@@ -78,24 +89,28 @@ const grupos = [
         rota: "/engenharia",
         icon: Wrench,
         badge: "",
+        permission: PERMISSIONS.ENGINEERING,
       },
       {
         nome: "Ordens de Serviço",
         rota: "/os",
         icon: ClipboardList,
         badge: "",
+        permission: PERMISSIONS.SERVICE_ORDERS_INTERNAL,
       },
       {
         nome: "Projetos",
         rota: "/projetos",
         icon: BriefcaseBusiness,
         badge: "",
+        permission: PERMISSIONS.PROJECTS,
       },
       {
         nome: "Agenda",
         rota: "/agenda",
         icon: Calendar,
         badge: "",
+        permission: PERMISSIONS.AGENDA,
       },
     ],
   },
@@ -107,36 +122,41 @@ const grupos = [
         rota: "/financeiro",
         icon: DollarSign,
         badge: "",
+        permission: PERMISSIONS.FINANCIAL,
       },
       {
         nome: "Fluxo de Caixa",
         rota: "/financeiro/fluxo-caixa",
         icon: Landmark,
         badge: "",
+        permission: PERMISSIONS.FINANCIAL,
       },
       {
         nome: "DRE",
         rota: "/financeiro/dre",
         icon: BarChart3,
         badge: "",
+        permission: PERMISSIONS.FINANCIAL,
       },
       {
         nome: "Relatórios",
         rota: "/relatorios",
         icon: BarChart3,
         badge: "",
+        permission: PERMISSIONS.REPORTS,
       },
       {
         nome: "Configurações",
         rota: "/configuracoes",
         icon: Settings,
         badge: "",
+        permission: PERMISSIONS.ADMINISTRATION,
       },
     ],
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ role, name }: { role: AppRole; name: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -259,7 +279,12 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-        {grupos.map((grupo) => (
+        {grupos.map((grupo) => {
+          const allowedItems = grupo.itens.filter((item) =>
+            canAccessModule(role, item.permission as Permission)
+          );
+          if (allowedItems.length === 0) return null;
+          return (
           <div
             key={
               grupo.titulo || "principal"
@@ -278,7 +303,7 @@ export function Sidebar() {
               )}
 
             <div className="space-y-1">
-              {grupo.itens.map((item) => {
+              {allowedItems.map((item) => {
                 const Icon = item.icon;
 
                 const ativo =
@@ -357,7 +382,8 @@ export function Sidebar() {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       <div className="border-t border-white/[0.05] p-3">
@@ -370,11 +396,11 @@ export function Sidebar() {
 
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-white">
-                  Daniel Panazzolo
+                  {name}
                 </p>
 
                 <p className="truncate text-xs text-zinc-500">
-                  Administrador
+                  {role.replaceAll("_", " ")}
                 </p>
               </div>
             </div>

@@ -1,7 +1,8 @@
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 import { FINANCIAL_ATTACHMENT_ALLOWED_MIME_TYPES } from "@/lib/storage/storage.config";
 import { PrivateStorageError } from "@/lib/storage/storage.errors";
 import {
@@ -186,4 +187,7 @@ export async function removeFinancialAttachment(id: string) {
   }
   await deleteFinancialAttachment(id);
   return attachment;
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.FINANCIAL)).companyId;
 }

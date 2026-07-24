@@ -1,4 +1,5 @@
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 import {
   findCompanyAgendaUsers,
   findScheduledServiceOrders,
@@ -28,4 +29,7 @@ export async function deleteCompanyAgendaItem(id: string) {
   }
 
   return serviceOrder;
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.AGENDA)).companyId;
 }

@@ -1,4 +1,8 @@
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.DASHBOARD_COMMERCIAL)).companyId;
+}
 import { searchCompanyRecords } from "@/repositories/global-search.repository";
 
 export async function globalSearch(query: string) {

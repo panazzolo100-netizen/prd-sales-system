@@ -6,7 +6,8 @@ import {
   upsertEngineering,
   type UpdateEngineeringData,
 } from "@/repositories/engineering.repository";
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 import { findLeadById } from "@/repositories/leads.repository";
 import { normalizeServiceType } from "@/lib/opportunity-service-types";
 import {
@@ -70,4 +71,7 @@ export async function createEngineeringProject(data: { title: string; clientId: 
   const serviceType = normalizeServiceType(data.serviceType);
   if (!serviceType) throw new Error("Tipo de serviço inválido.");
   return createEngineeringProjectRepository({ companyId: await getCurrentCompanyId(), clientId: data.clientId, serviceType, title, description: data.description?.trim() || null });
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.ENGINEERING)).companyId;
 }

@@ -1,7 +1,8 @@
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 import { ServiceOrderPhotoCategory } from "@/lib/generated/prisma/enums";
 import {
   SERVICE_ORDER_PHOTO_ALLOWED_MIME_TYPES,
@@ -207,4 +208,7 @@ export async function removeServiceOrderPhoto(id: string) {
     description: photo.name,
   });
   return photo;
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.SERVICE_ORDERS_INTERNAL)).companyId;
 }

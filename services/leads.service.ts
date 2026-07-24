@@ -1,6 +1,10 @@
 import { LeadStatus } from "@/lib/generated/prisma/enums";
 import { isServiceType, sanitizeServiceDetails } from "@/lib/opportunity-service-types";
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.COMMERCIAL)).companyId;
+}
 
 import {
   createClientFromLead,

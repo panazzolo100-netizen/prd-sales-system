@@ -3,7 +3,8 @@ import {
   upsertDimensioning,
   type UpdateDimensioningData,
 } from "@/repositories/dimensioning.repository";
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 import { findLeadById } from "@/repositories/leads.repository";
 
 async function assertLeadAccess(leadId: string) { if (!await findLeadById(leadId, await getCurrentCompanyId())) throw new Error("Lead não encontrado."); }
@@ -33,4 +34,7 @@ export async function saveLeadDimensioning(
     data
   );
 
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.ENGINEERING)).companyId;
 }

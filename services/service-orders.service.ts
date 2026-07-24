@@ -13,7 +13,8 @@ import {
   updateServiceOrderChecklist,
   updateServiceOrderRepository,
 } from "@/repositories/service-orders.repository";
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 
 import { registerServiceOrderEvent } from "@/services/service-order-timeline.service";
 import { isSolarService, serviceTypeLabel } from "@/lib/opportunity-service-types";
@@ -49,12 +50,15 @@ type ChecklistData = {
 export async function listServiceOrders(
   companyId: string
 ) {
-  return findServiceOrdersByCompany(companyId);
+  const user = await requirePermission(PERMISSIONS.SERVICE_ORDERS_INTERNAL);
+  return findServiceOrdersByCompany(user.companyId === companyId ? companyId : "");
 }
 
 export async function listAvailableProjectsForServiceOrder(
   companyId: string
 ) {
+  const user = await requirePermission(PERMISSIONS.SERVICE_ORDERS_INTERNAL);
+  if (user.companyId !== companyId) return [];
   return findAvailableProjectsForServiceOrder(
     companyId
   );
@@ -68,6 +72,10 @@ export async function createServiceOrderData(data: {
   scheduledDate?: Date | null;
   services?: string | null;
 }) {
+  const user = await requirePermission(PERMISSIONS.SERVICE_ORDERS_INTERNAL);
+  if (user.companyId !== data.companyId) {
+    throw new Error("Empresa inválida para esta operação.");
+  }
   const project = await findProjectForServiceOrder(
     data.projectId,
     data.companyId
@@ -504,6 +512,7 @@ export async function getServiceOrderPdfData(
 export async function getPublicServiceOrderValidationData(
   id: string
 ) {
+  await requirePermission(PERMISSIONS.SERVICE_ORDERS_INTERNAL);
   const serviceOrder =
     await findServiceOrderForPdf(id);
 
@@ -591,4 +600,7 @@ export async function getCompanyServiceOrderDashboard(id: string) {
     ),
     recentEvents: dashboard.timeline,
   };
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.SERVICE_ORDERS_INTERNAL)).companyId;
 }

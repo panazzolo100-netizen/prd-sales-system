@@ -1,4 +1,5 @@
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 
 import {
   findProjectById,
@@ -102,4 +103,7 @@ export async function deleteCompanyProject(id: string) {
     );
   }
   return deleted;
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.PROJECTS)).companyId;
 }

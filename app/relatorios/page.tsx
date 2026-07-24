@@ -2,11 +2,13 @@ import Link from "next/link";
 import { BarChart3, BriefcaseBusiness, CircleDollarSign, ClipboardList, FileText, Users } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { getDashboardData } from "@/services/dashboard";
+import { redirect } from "next/navigation";
 
 const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 export default async function ReportsPage() {
   const data = await getDashboardData();
+  if (data.scope !== "BUSINESS") redirect("/");
   const reports = [
     { title: "Comercial", description: "Leads, propostas e conversão", value: `${data.conversao}%`, detail: `${data.totalLeads} oportunidades • ${data.ganhos} ganhos`, icon: Users, href: "/pipeline", color: "text-violet-400 bg-violet-500/15" },
     { title: "Projetos", description: "Carteira operacional", value: String(data.projetos), detail: `${data.projetosAndamento} em andamento • ${data.projetosConcluidos} concluídos`, icon: BriefcaseBusiness, href: "/projetos", color: "text-cyan-400 bg-cyan-500/15" },

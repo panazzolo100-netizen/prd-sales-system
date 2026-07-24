@@ -15,11 +15,12 @@ import {
   getFinancialSummary,
 } from "@/repositories/dashboard.repository";
 
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS, hasPermission } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 
 export async function getDashboardData() {
-  const companyId =
-    await getCurrentCompanyId();
+  const user = await requirePermission(PERMISSIONS.DASHBOARD_COMMERCIAL);
+  const companyId = user.companyId;
 
   const [
     totalLeads,
@@ -27,6 +28,38 @@ export async function getDashboardData() {
     ganhos,
     propostas,
     pipeline,
+  ] = await Promise.all([
+    countLeads(companyId),
+    countClients(companyId),
+    countWonLeads(companyId),
+    countProposalLeads(companyId),
+    countPipelineByStatus(companyId),
+  ]);
+
+  const conversao =
+    totalLeads === 0
+      ? 0
+      : Math.round(
+          (ganhos / totalLeads) * 100
+        );
+
+  const canViewBusiness = hasPermission(
+    user.role,
+    PERMISSIONS.DASHBOARD_BUSINESS
+  );
+  if (!canViewBusiness) {
+    return {
+      scope: "COMMERCIAL" as const,
+      totalLeads,
+      totalClientes,
+      ganhos,
+      propostas,
+      conversao,
+      pipeline,
+    };
+  }
+
+  const [
     projetos,
     projetosAndamento,
     projetosConcluidos,
@@ -37,11 +70,6 @@ export async function getDashboardData() {
     documentos,
     financeiro,
   ] = await Promise.all([
-    countLeads(companyId),
-    countClients(companyId),
-    countWonLeads(companyId),
-    countProposalLeads(companyId),
-    countPipelineByStatus(companyId),
     countProjects(companyId),
     countProjectsInProgress(companyId),
     countCompletedProjects(companyId),
@@ -53,37 +81,22 @@ export async function getDashboardData() {
     getFinancialSummary(companyId),
   ]);
 
-  const conversao =
-    totalLeads === 0
-      ? 0
-      : Math.round(
-          (ganhos / totalLeads) * 100
-        );
-
-  const totalPendente =
-    financeiro.saleValue -
-    financeiro.receivedValue;
-
-  const margem =
-    financeiro.saleValue === 0
-      ? 0
-      : Math.round(
-          ((financeiro.saleValue -
-            financeiro.costValue) /
-            financeiro.saleValue) *
-            100
-        );
-
-  const percentualRecebido =
-    financeiro.saleValue === 0
-      ? 0
-      : Math.round(
-          (financeiro.receivedValue /
-            financeiro.saleValue) *
-            100
-        );
+  const totalPendente = financeiro.saleValue - financeiro.receivedValue;
+  const margem = financeiro.saleValue === 0
+    ? 0
+    : Math.round(
+        ((financeiro.saleValue - financeiro.costValue) /
+          financeiro.saleValue) *
+          100
+      );
+  const percentualRecebido = financeiro.saleValue === 0
+    ? 0
+    : Math.round(
+        (financeiro.receivedValue / financeiro.saleValue) * 100
+      );
 
   return {
+    scope: "BUSINESS" as const,
     totalLeads,
     totalClientes,
     ganhos,

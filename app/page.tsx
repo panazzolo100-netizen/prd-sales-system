@@ -59,6 +59,38 @@ export default async function Dashboard() {
   const primeiroNome =
     usuario.name.split(" ")[0] || "Usuário";
 
+  if (data.scope === "COMMERCIAL") {
+    return (
+      <AppLayout>
+        <main className="space-y-8">
+          <section className="rounded-[28px] border border-white/[0.07] bg-gradient-to-br from-zinc-900 to-orange-950/30 p-7 lg:p-9">
+            <p className="text-sm font-semibold capitalize text-zinc-500">
+              {formatarData()}
+            </p>
+            <h1 className="mt-3 text-4xl font-black tracking-tight text-white">
+              {obterSaudacao()}, {primeiroNome}
+            </h1>
+            <p className="mt-3 text-zinc-400">
+              Acompanhe oportunidades, propostas e o pipeline comercial.
+            </p>
+            <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <HeroIndicator icon={Target} label="Oportunidades" value={String(data.totalLeads)} description={`${data.propostas} em proposta`} iconClass="bg-orange-500/15 text-orange-400" />
+              <HeroIndicator icon={Users} label="Clientes" value={String(data.totalClientes)} description="Clientes ativos" iconClass="bg-emerald-500/15 text-emerald-400" />
+              <HeroIndicator icon={FileText} label="Propostas" value={String(data.propostas)} description="Oportunidades em proposta" iconClass="bg-blue-500/15 text-blue-400" />
+              <HeroIndicator icon={TrendingUp} label="Conversão" value={`${data.conversao}%`} description={`${data.ganhos} oportunidade(s) ganha(s)`} iconClass="bg-violet-500/15 text-violet-400" />
+            </div>
+          </section>
+          <section className="grid gap-6 xl:grid-cols-3">
+            <div className="xl:col-span-2">
+              <PipelineOverview pipeline={data.pipeline} />
+            </div>
+            <ActivityFeed />
+          </section>
+        </main>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <main className="space-y-8">

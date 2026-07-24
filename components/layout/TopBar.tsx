@@ -11,6 +11,7 @@ import {
 import { GlobalSearch } from "./GlobalSearch";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { MobileNav } from "@/components/layout/MobileNav";
+import type { AppRole } from "@/lib/auth/permissions";
 
 const pageTitles: Record<
   string,
@@ -113,7 +114,7 @@ function getPageInformation(pathname: string) {
   );
 }
 
-export function Topbar() {
+export function Topbar({ role }: { role: AppRole }) {
   const pathname = usePathname();
 
   const pageInformation =
@@ -122,7 +123,7 @@ export function Topbar() {
   return (
     <header className="sticky top-0 z-30 mb-6 border-b border-white/[0.06] bg-[#0b0b0d]/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:mb-8 lg:px-8">
       <div className="flex items-center justify-between gap-5">
-        <MobileNav />
+        <MobileNav role={role} />
         <div className="min-w-0">
           <p className="truncate text-lg font-bold text-white">
             {pageInformation.title}

@@ -1,40 +1,24 @@
 import { redirect } from "next/navigation";
 
-import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { AuthenticationRequiredError } from "@/lib/auth/access-errors";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import {
+  getCurrentUserAccess,
+  requirePermission,
+} from "@/services/auth.service";
 
 export async function getCurrentAppUser() {
-  const supabase = await createClient();
-
-  const {
-    data: { user: authUser },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !authUser?.email) {
-    redirect("/login");
+  try {
+    return await getCurrentUserAccess();
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      redirect("/login");
+    }
+    throw error;
   }
-
-  const appUser = await prisma.user.findUnique({
-    where: {
-      email: authUser.email,
-    },
-    include: {
-      company: true,
-    },
-  });
-
-  if (!appUser) {
-    throw new Error(
-      "Usuário autenticado, mas não cadastrado no ERP."
-    );
-  }
-
-  return appUser;
 }
 
 export async function getCurrentCompanyId() {
-  const user = await getCurrentAppUser();
-
+  const user = await requirePermission(PERMISSIONS.DASHBOARD_COMMERCIAL);
   return user.companyId;
 }

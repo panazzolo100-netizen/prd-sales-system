@@ -1,4 +1,5 @@
-import { getCurrentCompanyId } from "@/lib/auth/current-user";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { requirePermission } from "@/services/auth.service";
 import {
   createProjectTimeline,
   findProjectTimelineData,
@@ -86,4 +87,7 @@ export async function listCompanyProjectTimeline(
       new Date(second.createdAt).getTime() -
       new Date(first.createdAt).getTime()
   );
+}
+async function getCurrentCompanyId() {
+  return (await requirePermission(PERMISSIONS.PROJECTS)).companyId;
 }
