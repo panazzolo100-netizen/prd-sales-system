@@ -216,7 +216,7 @@ export function ProjectsClient({
   return (
     <>
       <div className="space-y-6">
-        <section className="rounded-3xl border border-white/[0.07] bg-zinc-900 p-6">
+        <section className="rounded-3xl border border-white/[0.07] bg-zinc-900 p-5">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-500">
             Operação
@@ -231,7 +231,7 @@ export function ProjectsClient({
           </p>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <MetricCard
             icon={FolderKanban}
             label="Projetos"
@@ -356,7 +356,7 @@ export function ProjectsClient({
             onClear={clearFilters}
           />
         ) : (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {filteredProjects.map(
               (project) => (
                 <ProjectCard
@@ -426,41 +426,53 @@ function ProjectCard({
       }}
       role="button"
       tabIndex={0}
-      className="group relative cursor-pointer rounded-2xl border border-white/[0.07] bg-zinc-950 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+      className="group relative cursor-pointer overflow-visible rounded-2xl border border-white/[0.07] bg-gradient-to-br from-zinc-950 to-zinc-900 p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-base font-bold text-white">
+          <h2 className="truncate text-[15px] font-bold text-white">
             {project.title}
           </h2>
 
-          <p className="mt-1 truncate text-sm text-zinc-400">
+          <p className="mt-0.5 truncate text-xs text-zinc-400">
             {project.client.name}
           </p>
         </div>
 
-        <span
-          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${status.className}`}
-        >
-          {status.label}
-        </span>
+        <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+          <span
+            className={`pointer-events-none rounded-full border px-2 py-0.5 text-[10px] font-semibold ${status.className}`}
+          >
+            {status.label}
+          </span>
+          <EntityDeleteButton
+            endpoint={`/api/projects?id=${encodeURIComponent(project.id)}`}
+            entityName={`${project.title} — ${project.client.name}`}
+            buttonLabel="Excluir projeto"
+            consequence="Etapas, eventos e documentos próprios serão removidos, inclusive seus arquivos no Storage. Cliente e lead serão preservados. Ordem de Serviço ou financeiro bloqueiam a exclusão."
+            successMessage="Projeto excluído com sucesso."
+            onDeleted={() => onDeleted(project.id)}
+            menuTrigger
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-white/5 hover:text-zinc-300"
+          />
+        </div>
       </div>
 
       {project.description && (
-        <p className="mt-3 line-clamp-2 text-sm leading-5 text-zinc-500">
+        <p className="mt-2.5 line-clamp-2 text-xs leading-4 text-zinc-500">
           {project.description}
         </p>
       )}
 
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-xs">
+      <div className="mt-3.5">
+        <div className="flex items-center justify-between text-[11px]">
           <span className="text-zinc-500">{progress.completed} de {progress.total} etapas</span>
           <span className="font-bold text-orange-400">
             {progress.percentage}%
           </span>
         </div>
 
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-zinc-800">
+        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-zinc-800">
           <div
             className="h-full rounded-full bg-orange-500 transition-all duration-500"
             style={{
@@ -468,18 +480,6 @@ function ProjectCard({
             }}
           />
         </div>
-      </div>
-      <div className="mt-3 flex justify-end" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-        <EntityDeleteButton
-          endpoint={`/api/projects?id=${encodeURIComponent(project.id)}`}
-          entityName={`${project.title} — ${project.client.name}`}
-          buttonLabel="Excluir projeto"
-          consequence="Etapas, eventos e documentos próprios serão removidos, inclusive seus arquivos no Storage. Cliente e lead serão preservados. Ordem de Serviço ou financeiro bloqueiam a exclusão."
-          successMessage="Projeto excluído com sucesso."
-          onDeleted={() => onDeleted(project.id)}
-          iconOnly
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-red-500/10 hover:text-red-400"
-        />
       </div>
     </article>
   );
@@ -502,7 +502,7 @@ function MetricCard({
 }: MetricCardProps) {
   return (
     <div
-      className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 ${
+      className={`rounded-2xl border p-3.5 transition hover:-translate-y-0.5 ${
         highlight
           ? "border-orange-500/20 bg-orange-500/[0.06]"
           : "border-white/[0.07] bg-zinc-950"
@@ -514,7 +514,7 @@ function MetricCard({
         </p>
 
         <div
-          className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+          className={`flex h-8 w-8 items-center justify-center rounded-lg ${
             highlight
               ? "bg-orange-500/15 text-orange-400"
               : "bg-zinc-900 text-zinc-500"
@@ -525,7 +525,7 @@ function MetricCard({
       </div>
 
       <p
-        className={`mt-3 truncate text-2xl font-black ${
+        className={`mt-2 truncate text-xl font-black ${
           highlight
             ? "text-orange-400"
             : "text-white"

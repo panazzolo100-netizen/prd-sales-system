@@ -3,6 +3,7 @@
 import {
   CheckCircle2,
   LoaderCircle,
+  MoreHorizontal,
   Trash2,
   XCircle,
 } from "lucide-react";
@@ -18,6 +19,7 @@ type Props = {
   onDeleted?: () => void;
   className?: string;
   iconOnly?: boolean;
+  menuTrigger?: boolean;
 };
 
 export function EntityDeleteButton({
@@ -29,10 +31,12 @@ export function EntityDeleteButton({
   onDeleted,
   className,
   iconOnly = false,
+  menuTrigger = false,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const deletionInFlight = useRef(false);
   const [result, setResult] = useState<{
     type: "success" | "error";
@@ -80,22 +84,55 @@ export function EntityDeleteButton({
 
   return (
     <>
-      <button
-        type="button"
-        aria-label={iconOnly ? buttonLabel : undefined}
-        title={iconOnly ? buttonLabel : undefined}
-        onClick={() => {
-          setResult(null);
-          setOpen(true);
-        }}
-        className={
-          className ??
-          "inline-flex items-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
-        }
-      >
-        <Trash2 size={16} />
-        {iconOnly ? <span className="sr-only">{buttonLabel}</span> : buttonLabel}
-      </button>
+      {menuTrigger ? (
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Abrir ações"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((current) => !current)}
+            className={
+              className ??
+              "inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white/5 hover:text-white"
+            }
+          >
+            <MoreHorizontal size={17} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-9 z-40 w-36 rounded-xl border border-white/10 bg-zinc-900 p-1.5 shadow-xl shadow-black/40">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setResult(null);
+                  setOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+              >
+                <Trash2 size={14} />
+                {buttonLabel}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-label={iconOnly ? buttonLabel : undefined}
+          title={iconOnly ? buttonLabel : undefined}
+          onClick={() => {
+            setResult(null);
+            setOpen(true);
+          }}
+          className={
+            className ??
+            "inline-flex items-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
+          }
+        >
+          <Trash2 size={16} />
+          {iconOnly ? <span className="sr-only">{buttonLabel}</span> : buttonLabel}
+        </button>
+      )}
 
       {open && (
         <div

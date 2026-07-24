@@ -12,9 +12,7 @@ export async function findServiceOrdersByCompany(
     select: {
       id: true,
       number: true,
-      title: true,
       status: true,
-      responsible: true,
       scheduledDate: true,
       customerSignature: true,
       technicianSignature: true,

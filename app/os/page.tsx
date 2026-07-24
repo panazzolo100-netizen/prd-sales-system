@@ -1,10 +1,11 @@
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import {
+  CalendarDays,
   CircleCheckBig,
   CirclePlay,
   ClipboardList,
-  Eye,
+  FileSignature,
   type LucideIcon,
 } from "lucide-react";
 
@@ -144,66 +145,36 @@ export default async function OrdensServicoPage() {
         </div>
 
         {ordens.length > 0 ? (
-          <>
-            <section className="hidden overflow-hidden rounded-2xl border border-white/[0.07] bg-zinc-900/70 md:block">
-              <table className="w-full table-fixed text-left">
-                <thead className="border-b border-white/[0.07] bg-zinc-950/70 text-xs uppercase tracking-wide text-zinc-500">
-                  <tr>
-                    <th className="w-[13%] px-4 py-3">OS</th>
-                    <th className="w-[22%] px-4 py-3">Empresa</th>
-                    <th className="w-[18%] px-4 py-3">Responsável</th>
-                    <th className="w-[15%] px-4 py-3">Data agendada</th>
-                    <th className="w-[13%] px-4 py-3">Assinaturas</th>
-                    <th className="w-[13%] px-4 py-3">Status</th>
-                    <th className="w-[6%] px-3 py-3 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.06]">
-                  {ordens.map((ordem) => (
-                    <tr key={ordem.id} className="transition hover:bg-white/[0.025]">
-                      <td className="px-4 py-3">
-                        <Link href={`/os/${ordem.id}`} className="font-bold text-orange-400 hover:text-orange-300">{ordem.number}</Link>
-                        <p className="mt-0.5 truncate text-xs text-zinc-500">{ordem.title}</p>
-                      </td>
-                      <td className="truncate px-4 py-3 text-sm text-zinc-200">{ordem.project.client.name}</td>
-                      <td className="truncate px-4 py-3 text-sm text-zinc-400">{ordem.responsible ?? "-"}</td>
-                      <td className="px-4 py-3 text-sm text-zinc-400">{formatDate(ordem.scheduledDate)}</td>
-                      <td className="px-4 py-3 text-sm text-zinc-400">{signatureLabel(ordem)}</td>
-                      <td className="px-4 py-3"><StatusBadge status={ordem.status} /></td>
-                      <td className="px-3 py-3">
-                        <div className="flex justify-end gap-1">
-                          <Link href={`/os/${ordem.id}`} aria-label={`Abrir ${ordem.number}`} title="Abrir OS" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-orange-500/10 hover:text-orange-400"><Eye size={16} /></Link>
-                          <DeleteOrder ordem={ordem} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-
-            <section className="grid gap-3 md:hidden">
-              {ordens.map((ordem) => (
-                <article key={ordem.id} className="relative rounded-2xl border border-white/[0.07] bg-zinc-900 p-4">
-                  <Link href={`/os/${ordem.id}`} aria-label={`Abrir ${ordem.number}`} className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500" />
-                  <div className="pointer-events-none relative z-10 flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-orange-400">{ordem.number}</p>
-                      <h2 className="mt-1 truncate font-semibold text-white">{ordem.title}</h2>
-                      <p className="mt-1 truncate text-sm text-zinc-400">{ordem.project.client.name}</p>
-                    </div>
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {ordens.map((ordem) => (
+              <article
+                key={ordem.id}
+                className="group relative overflow-visible rounded-2xl border border-white/[0.07] bg-gradient-to-br from-zinc-900 to-zinc-950 p-3.5 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-black/20"
+              >
+                <Link href={`/os/${ordem.id}`} aria-label={`Abrir ${ordem.number}`} className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500" />
+                <div className="relative z-10 flex items-center justify-between gap-2">
+                  <p className="pointer-events-none text-sm font-bold text-orange-400">{ordem.number}</p>
+                  <div className="flex shrink-0 items-center gap-1">
                     <StatusBadge status={ordem.status} />
+                    <DeleteOrder ordem={ordem} />
                   </div>
-                  <div className="pointer-events-none relative z-10 mt-4 grid grid-cols-2 gap-3 text-xs">
-                    <CompactInfo label="Responsável" value={ordem.responsible ?? "-"} />
-                    <CompactInfo label="Data agendada" value={formatDate(ordem.scheduledDate)} />
-                    <CompactInfo label="Assinaturas" value={signatureLabel(ordem)} />
-                  </div>
-                  <div className="relative z-20 mt-2 flex justify-end"><DeleteOrder ordem={ordem} /></div>
-                </article>
-              ))}
-            </section>
-          </>
+                </div>
+                <h2 className="pointer-events-none relative z-10 mt-3 truncate text-[15px] font-bold text-white">
+                  {ordem.project.client.name}
+                </h2>
+                <div className="pointer-events-none relative z-10 mt-3.5 flex items-center justify-between border-t border-white/[0.06] pt-3 text-[11px]">
+                  <span className="flex min-w-0 items-center gap-1.5 text-zinc-500">
+                    <CalendarDays size={13} className="shrink-0" />
+                    <span className="truncate">{formatDate(ordem.scheduledDate)}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5 font-semibold text-zinc-300">
+                    <FileSignature size={13} className="text-zinc-500" />
+                    {signatureLabel(ordem)}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </section>
         ) : (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-10 text-center">
             <h2 className="text-lg font-semibold text-white">Nenhuma Ordem de Serviço</h2>
@@ -230,18 +201,14 @@ function DeleteOrder({ ordem }: { ordem: OrderRow }) {
   return (
     <EntityDeleteButton
       endpoint={`/api/os?id=${encodeURIComponent(ordem.id)}`}
-      entityName={`${ordem.number} — ${ordem.title}`}
+      entityName={ordem.number}
       buttonLabel="Excluir OS"
       consequence="Timeline e fotos internas serão removidas. Projeto, cliente, lead e proposta serão preservados. Execução, checklist, assinatura ou financeiro consolidado bloqueiam a exclusão."
       successMessage="Ordem de Serviço excluída com sucesso."
-      iconOnly
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-red-500/10 hover:text-red-400"
+      menuTrigger
+      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-white/5 hover:text-zinc-300"
     />
   );
-}
-
-function CompactInfo({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-0"><p className="text-zinc-600">{label}</p><p className="mt-1 truncate font-medium text-zinc-300">{value}</p></div>;
 }
 
 function SummaryCard({ label, value, icon: Icon }: { label: string; value: number; icon: LucideIcon }) {

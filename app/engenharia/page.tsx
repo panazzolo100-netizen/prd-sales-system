@@ -169,7 +169,7 @@ export default async function Engenharia() {
           </details>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {projetos.map((projeto) => {
             const order = projeto.serviceOrder;
             const checklist = order ? [order.checklistArt, order.checklistProjectApproved, order.checklistMaterialsSeparated, order.checklistStructureInstalled, order.checklistModulesInstalled, order.checklistInverterInstalled, order.checklistDcCabling, order.checklistAcCabling, order.checklistCommissioning, order.checklistCustomerTraining, order.checklistDelivered] : [];
@@ -178,44 +178,44 @@ export default async function Engenharia() {
             return (
             <article
               key={projeto.id}
-              className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-br from-zinc-900 to-zinc-950 p-4 shadow-lg shadow-black/10 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/35"
+              className="group relative overflow-visible rounded-2xl border border-white/[0.07] bg-gradient-to-br from-zinc-900 to-zinc-950 p-3.5 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-black/20"
             >
               <Link href={`/engenharia/${projeto.id}`} aria-label={`Abrir ${projeto.title}`} className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500" />
-              <div className="pointer-events-none relative z-10 flex items-start justify-between gap-3">
+              <div className="relative z-10 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="truncate text-base font-bold text-white">
+                  <h2 className="pointer-events-none truncate text-[15px] font-bold text-white">
                     {projeto.title}
                   </h2>
-                  <p className="mt-1 truncate text-sm text-zinc-400">
+                  <p className="pointer-events-none mt-0.5 truncate text-xs text-zinc-400">
                     {projeto.client.name}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-orange-500/15 px-2.5 py-1 text-[11px] font-semibold text-orange-500">
-                  {statusLabel(projeto.status)}
-                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <span className="pointer-events-none rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400">
+                    {statusLabel(projeto.status)}
+                  </span>
+                  <EntityDeleteButton
+                    endpoint={`/api/projects?id=${encodeURIComponent(projeto.id)}`}
+                    entityName={`${projeto.title} — ${projeto.client.name}`}
+                    buttonLabel="Excluir projeto"
+                    consequence="Etapas, eventos e documentos próprios serão removidos, inclusive seus arquivos no Storage. Cliente e lead serão preservados. Ordem de Serviço ou financeiro bloqueiam a exclusão."
+                    successMessage="Projeto excluído com sucesso."
+                    menuTrigger
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-white/5 hover:text-zinc-300"
+                  />
+                </div>
               </div>
-              <span className="pointer-events-none relative z-10 mt-3 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-300">
+              <span className="pointer-events-none relative z-10 mt-2.5 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold text-cyan-300">
                 {engineeringTypeLabel(projeto.serviceType)}
               </span>
-              <div className="pointer-events-none relative z-10 mt-5">
-                <div className="flex items-center justify-between text-xs">
+              <div className="pointer-events-none relative z-10 mt-3.5">
+                <div className="flex items-center justify-between text-[11px]">
                   <span className="text-zinc-500">{completed} de 11 etapas</span>
                   <span className="font-bold text-orange-400">{progress}%</span>
                 </div>
-                <div className="mt-2 h-1 overflow-hidden rounded-full bg-zinc-800">
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-zinc-800">
                   <div className={`h-full rounded-full ${progress === 100 ? "bg-emerald-500" : "bg-orange-500"}`} style={{ width: `${progress}%` }} />
                 </div>
-              </div>
-              <div className="relative z-20 mt-4 flex justify-end">
-                <EntityDeleteButton
-                  endpoint={`/api/projects?id=${encodeURIComponent(projeto.id)}`}
-                  entityName={`${projeto.title} — ${projeto.client.name}`}
-                  buttonLabel="Excluir projeto"
-                  consequence="Etapas, eventos e documentos próprios serão removidos, inclusive seus arquivos no Storage. Cliente e lead serão preservados. Ordem de Serviço ou financeiro bloqueiam a exclusão."
-                  successMessage="Projeto excluído com sucesso."
-                  iconOnly
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-red-500/10 hover:text-red-400"
-                />
               </div>
             </article>
           );})}
