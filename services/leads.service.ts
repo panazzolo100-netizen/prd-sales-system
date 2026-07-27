@@ -19,19 +19,13 @@ import {
   type CreateLeadData,
   type UpdateLeadData,
 } from "@/repositories/leads.repository";
-import { toLeadFileResponses } from "@/services/leads.files.service";
 
 export async function listCompanyLeads() {
   const companyId =
     await getCurrentCompanyId();
 
   const leads = await findLeadsByCompany(companyId);
-  return Promise.all(
-    leads.map(async (lead) => ({
-      ...lead,
-      files: await toLeadFileResponses(lead.files, companyId),
-    }))
-  );
+  return leads;
 }
 
 export async function getCompanyLeadById(
@@ -51,7 +45,9 @@ export async function getCompanyLeadById(
 
   return {
     ...lead,
-    files: await toLeadFileResponses(lead.files, companyId),
+    files: await import("@/services/leads.files.service").then(({ toLeadFileResponses }) =>
+      toLeadFileResponses(lead.files, companyId)
+    ),
   };
 }
 

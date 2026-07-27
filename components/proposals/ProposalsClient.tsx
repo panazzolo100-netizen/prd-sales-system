@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { KanbanBoard, type KanbanColumn } from "@/components/kanban/KanbanBoard";
-import { ProposalDetailsDrawer } from "@/components/proposals/ProposalDetailsDrawer";
 import type { ProposalListItem } from "@/types/proposal";
+
+const ProposalDetailsDrawer = dynamic(() => import("@/components/proposals/ProposalDetailsDrawer").then((module) => module.ProposalDetailsDrawer));
 
 const columns: KanbanColumn[] = [
   { id: "draft", label: "Rascunho", statuses: ["RASCUNHO"], moveStatus: "RASCUNHO", tone: "sky" },
@@ -56,6 +58,6 @@ export function ProposalsClient({ initialProposals }: { initialProposals: Propos
         { label: "Valor aprovado", value: currency.format(proposals.filter((item) => item.status === "APROVADA").reduce((sum, item) => sum + item.amount, 0)) },
       ]}
     />
-    <ProposalDetailsDrawer proposal={selected} open={selected !== null} onClose={() => setSelected(null)} onDeleted={(id) => { setProposals((all) => all.filter((item) => item.id !== id)); setSelected(null); }} onProposalChange={(proposal) => { setProposals((all) => all.map((item) => item.id === proposal.id ? { ...item, ...proposal, lead: proposal.lead ?? item.lead } : item)); setSelected(proposal); }} />
+    {selected && <ProposalDetailsDrawer proposal={selected} open onClose={() => setSelected(null)} onDeleted={(id) => { setProposals((all) => all.filter((item) => item.id !== id)); setSelected(null); }} onProposalChange={(proposal) => { setProposals((all) => all.map((item) => item.id === proposal.id ? { ...item, ...proposal, lead: proposal.lead ?? item.lead } : item)); setSelected(proposal); }} />}
   </>;
 }

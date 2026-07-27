@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { KanbanBoard, type KanbanColumn } from "@/components/kanban/KanbanBoard";
-import { ProjectDetailsDrawer } from "@/components/projects/ProjectDetailsDrawer";
 import type { ProjectListItem } from "@/types/project";
+
+const ProjectDetailsDrawer = dynamic(() => import("@/components/projects/ProjectDetailsDrawer").then((module) => module.ProjectDetailsDrawer));
 
 const columns: KanbanColumn[] = [
   { id: "planning", label: "Planejamento", statuses: ["NOVO"], moveStatus: "NOVO", tone: "sky" },
@@ -39,6 +41,6 @@ export function ProjectsClient({ initialProjects }: { initialProjects: ProjectLi
         { label: "Concluídos", value: items.filter((item) => item.status === "CONCLUIDO").length },
       ]}
     />
-    <ProjectDetailsDrawer project={selected} open={selected !== null} onClose={() => setSelected(null)} onProjectChange={(project) => { setProjects((all) => all.map((item) => item.id === project.id ? project : item)); setSelected(project); }} onDeleted={(id) => { setProjects((all) => all.filter((item) => item.id !== id)); setSelected(null); }} />
+    {selected && <ProjectDetailsDrawer project={selected} open onClose={() => setSelected(null)} onProjectChange={(project) => { setProjects((all) => all.map((item) => item.id === project.id ? project : item)); setSelected(project); }} onDeleted={(id) => { setProjects((all) => all.filter((item) => item.id !== id)); setSelected(null); }} />}
   </>;
 }

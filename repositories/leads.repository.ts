@@ -58,7 +58,27 @@ export async function findLeadsByCompany(
     orderBy: {
       createdAt: "desc",
     },
-    include: {
+    select: {
+      id: true,
+      companyName: true,
+      contactName: true,
+      phone: true,
+      email: true,
+      city: true,
+      state: true,
+      source: true,
+      serviceType: true,
+      serviceDetails: true,
+      distributor: true,
+      consumerUnit: true,
+      demandKw: true,
+      consumptionKwh: true,
+      estimatedValue: true,
+      expectedSaving: true,
+      notes: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
       owner: {
         select: {
           id: true,
@@ -67,18 +87,25 @@ export async function findLeadsByCompany(
         },
       },
       activities: {
-        orderBy: {
-          createdAt: "desc",
+        select: { createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+      proposal: {
+        select: {
+          id: true,
+          title: true,
+          amount: true,
+          status: true,
+          validUntil: true,
+          createdAt: true,
+          systemPower: true,
+          monthlySaving: true,
+          annualSaving: true,
+          payback: true,
         },
       },
-      proposal: true,
-      files: {
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-      engineering: true,
-      client: true,
+      client: { select: { id: true } },
     },
   });
 }

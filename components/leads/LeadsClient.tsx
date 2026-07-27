@@ -2,14 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 
 import type { LeadListItem } from "@/types/lead";
 
-import { LeadDetailsDrawer } from "@/components/leads/LeadDetailsDrawer";
 import { LeadsFilters } from "@/components/leads/LeadsFilters";
 import { LeadsGrid } from "@/components/leads/LeadsGrid";
 import { LeadsHeader } from "@/components/leads/LeadsHeader";
-import { NewLeadDrawer } from "@/components/leads/NewLeadDrawer";
+const LeadDetailsDrawer = dynamic(() => import("@/components/leads/LeadDetailsDrawer").then((module) => module.LeadDetailsDrawer));
+const NewLeadDrawer = dynamic(() => import("@/components/leads/NewLeadDrawer").then((module) => module.NewLeadDrawer));
 
 type LeadsClientProps = {
   leads: LeadListItem[];
@@ -94,22 +95,22 @@ export function LeadsClient({
 
   return (
     <div className="space-y-6">
-      <NewLeadDrawer
+      {newDrawerOpen && <NewLeadDrawer
         open={newDrawerOpen}
         onClose={() =>
           setNewDrawerOpen(false)
         }
         onCreated={handleLeadCreated}
-      />
+      />}
 
-      <LeadDetailsDrawer
+      {selectedLead && <LeadDetailsDrawer
         lead={selectedLead}
         open={selectedLead !== null}
         onClose={() =>
           setSelectedLead(null)
         }
         onDeleted={() => router.refresh()}
-      />
+      />}
 
       <LeadsHeader
         totalLeads={leads.length}

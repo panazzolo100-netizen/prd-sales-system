@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { cache } from "react";
 
 import {
   AccessDeniedError,
@@ -13,18 +15,24 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { findUserAccessByEmail } from "@/repositories/users.repository";
 
-export async function getCurrentUserAccess() {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-    error,
-  } = await supabase.auth.getUser();
+async function loadCurrentUserAccess() {
+  const requestHeaders = await headers();
+  let email = requestHeaders.get("x-prd-auth-email");
 
-  if (error || !authUser?.email) {
-    throw new AuthenticationRequiredError();
+  if (!email) {
+    const supabase = await createClient();
+    const {
+      data: { user: authUser },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !authUser?.email) {
+      throw new AuthenticationRequiredError();
+    }
+    email = authUser.email;
   }
 
-  const user = await findUserAccessByEmail(authUser.email);
+  const user = await findUserAccessByEmail(email);
   if (!user) {
     throw new AuthenticationRequiredError(
       "Usuário autenticado, mas não cadastrado no ERP."
@@ -38,6 +46,10 @@ export async function getCurrentUserAccess() {
 
   return { ...user, role: user.role as AppRole };
 }
+
+// React clears this cache between requests and shares it across the current
+// server render, including layouts, pages and service calls.
+export const getCurrentUserAccess = cache(loadCurrentUserAccess);
 
 export async function requirePermission(permission: Permission) {
   const user = await getCurrentUserAccess();

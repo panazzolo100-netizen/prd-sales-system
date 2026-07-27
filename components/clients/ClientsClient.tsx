@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Building2,
   CircleDollarSign,
@@ -15,9 +16,10 @@ import {
   X,
 } from "lucide-react";
 
-import { ClientDetailsDrawer } from "@/components/clients/ClientDetailsDrawer";
 import type { ClientListItem } from "@/types/client";
 import { formatPhone, titleCase } from "@/utils/formatters";
+
+const ClientDetailsDrawer = dynamic(() => import("@/components/clients/ClientDetailsDrawer").then((module) => module.ClientDetailsDrawer));
 
 type ClientsClientProps = {
   initialClients: ClientListItem[];
@@ -425,7 +427,7 @@ export function ClientsClient({
         )}
       </div>
 
-            <ClientDetailsDrawer
+      {selectedClient && <ClientDetailsDrawer
         client={selectedClient}
         open={selectedClient !== null}
         onClose={() =>
@@ -442,7 +444,7 @@ export function ClientsClient({
           );
           setSelectedClient(null);
         }}
-      />
+      />}
     </>
   );
 }

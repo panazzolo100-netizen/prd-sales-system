@@ -13,14 +13,16 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 
-import { ProposalFinancialTab } from "@/components/proposals/tabs/ProposalFinancialTab";
 import type { ProposalCommercialData } from "@/components/proposals/tabs/ProposalFinancialTab";
-import { ProposalHistoryTab } from "@/components/proposals/tabs/ProposalHistoryTab";
-import { ProposalPdfTab } from "@/components/proposals/tabs/ProposalPdfTab";
-import { ProposalSummaryTab } from "@/components/proposals/tabs/ProposalSummaryTab";
 import { Drawer } from "@/components/ui/Drawer";
 import { EntityDeleteButton } from "@/components/ui/EntityDeleteButton";
+
+const ProposalFinancialTab = dynamic(() => import("@/components/proposals/tabs/ProposalFinancialTab").then((module) => module.ProposalFinancialTab));
+const ProposalHistoryTab = dynamic(() => import("@/components/proposals/tabs/ProposalHistoryTab").then((module) => module.ProposalHistoryTab));
+const ProposalPdfTab = dynamic(() => import("@/components/proposals/tabs/ProposalPdfTab").then((module) => module.ProposalPdfTab));
+const ProposalSummaryTab = dynamic(() => import("@/components/proposals/tabs/ProposalSummaryTab").then((module) => module.ProposalSummaryTab));
 
 import type {
   ProposalListItem,
