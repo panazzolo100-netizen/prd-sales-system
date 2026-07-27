@@ -33,6 +33,9 @@ type Props = {
       title: string;
       notes: string | null;
       createdAt: Date;
+      user?: {
+        name: string;
+      } | null;
     }[];
 
     proposal?: {
@@ -60,16 +63,24 @@ type Props = {
   };
 
   initialTab?: LeadTab;
+  hiddenTabs?: LeadTab[];
+  showActivityAuthors?: boolean;
 };
 
 
 export function LeadTabs({
   lead,
   initialTab = "Resumo",
+  hiddenTabs = [],
+  showActivityAuthors = false,
 }: Props) {
   const resolvedType = inferLegacyServiceType(lead);
   const solar = isSolarService(resolvedType);
-  const tabs = allTabs.filter(tab => tab !== "Dimensionamento" || solar);
+  const tabs = allTabs.filter(
+    (tab) =>
+      !hiddenTabs.includes(tab) &&
+      (tab !== "Dimensionamento" || solar)
+  );
   const [active, setActive] =
     useState<LeadTab>(initialTab);
 
@@ -104,7 +115,10 @@ export function LeadTabs({
         )}
 
         {active === "Timeline" && (
-          <LeadTimeline lead={lead} />
+          <LeadTimeline
+            lead={lead}
+            showActivityAuthors={showActivityAuthors}
+          />
         )}
 
         {active === "Propostas" && (
@@ -719,7 +733,7 @@ function LeadEngineering({ lead }: Props) {
 
   );
 }
-function LeadTimeline({ lead }: Props) {
+function LeadTimeline({ lead, showActivityAuthors = false }: Props) {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
@@ -805,11 +819,17 @@ function LeadTimeline({ lead }: Props) {
               className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5"
             >
               <h3 className="font-bold text-white">
-                {activity.title}
+                {showActivityAuthors && activity.user?.name
+                  ? `${activity.user.name.toLocaleUpperCase("pt-BR")} ${activity.title.charAt(0).toLocaleLowerCase("pt-BR")}${activity.title.slice(1)}`
+                  : activity.title}
               </h3>
 
               <p className="mt-2 text-sm text-zinc-400">
-                {activity.type}
+                {activity.type} ·{" "}
+                {new Date(activity.createdAt).toLocaleString("pt-BR", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
               </p>
 
               {activity.notes && (

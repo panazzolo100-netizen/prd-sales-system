@@ -170,6 +170,8 @@ model Lead {
 
   updatedAt DateTime @updatedAt
 
+  archivedAt DateTime?
+
   companyId String
 
   company Company @relation(fields: [companyId], references: [id])

@@ -214,7 +214,7 @@ export function Sidebar({ role, name }: { role: AppRole; name: string }) {
 
   return (
     <aside
-      className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-white/[0.06] bg-[#0b0b0d] transition-all duration-300 lg:flex ${
+      className={`prd-sidebar sticky top-0 hidden h-screen shrink-0 flex-col border-r border-white/[0.06] bg-[#0b0b0d] transition-all duration-300 lg:flex ${
         collapsed ? "w-[88px]" : "w-72"
       }`}
     >
@@ -332,7 +332,7 @@ export function Sidebar({ role, name }: { role: AppRole; name: string }) {
                         : "justify-between px-3"
                     } ${
                       ativo
-                        ? "bg-orange-500 text-white shadow-lg shadow-orange-500/15"
+                        ? "prd-nav-active bg-orange-500 text-white shadow-lg shadow-orange-500/15"
                         : "text-zinc-500 hover:bg-white/[0.045] hover:text-zinc-100"
                     }`}
                   >

@@ -54,6 +54,7 @@ export async function findLeadsByCompany(
   return prisma.lead.findMany({
     where: {
       companyId,
+      archivedAt: null,
     },
     orderBy: {
       createdAt: "desc",
@@ -131,6 +132,13 @@ export async function findLeadById(
         orderBy: {
           createdAt: "desc",
         },
+        include: {
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
       },
       proposal: true,
       files: {
@@ -163,6 +171,22 @@ export async function updateLead(
       companyId,
     },
     data,
+  });
+}
+
+export async function setLeadArchivedAt(
+  id: string,
+  companyId: string,
+  archivedAt: Date | null
+) {
+  return prisma.lead.update({
+    where: {
+      id,
+      companyId,
+    },
+    data: {
+      archivedAt,
+    },
   });
 }
 

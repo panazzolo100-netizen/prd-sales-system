@@ -1,7 +1,7 @@
 import { LeadStatus } from "@/lib/generated/prisma/enums";
 import { isServiceType, sanitizeServiceDetails } from "@/lib/opportunity-service-types";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { requirePermission } from "@/services/auth.service";
+import { requirePermission, requireRole } from "@/services/auth.service";
 async function getCurrentCompanyId() {
   return (await requirePermission(PERMISSIONS.COMMERCIAL)).companyId;
 }
@@ -15,6 +15,7 @@ import {
   deleteLead,
   findLeadById,
   findLeadsByCompany,
+  setLeadArchivedAt,
   updateLead,
   type CreateLeadData,
   type UpdateLeadData,
@@ -31,8 +32,8 @@ export async function listCompanyLeads() {
 export async function getCompanyLeadById(
   id: string
 ) {
-  const companyId =
-    await getCurrentCompanyId();
+  const user = await requirePermission(PERMISSIONS.COMMERCIAL);
+  const companyId = user.companyId;
 
   const lead = await findLeadById(
     id,
@@ -45,6 +46,10 @@ export async function getCompanyLeadById(
 
   return {
     ...lead,
+    activities: lead.activities.map((activity) => ({
+      ...activity,
+      user: user.role === "EXECUTIVO" ? activity.user : undefined,
+    })),
     files: await import("@/services/leads.files.service").then(({ toLeadFileResponses }) =>
       toLeadFileResponses(lead.files, companyId)
     ),
@@ -80,8 +85,8 @@ export async function updateCompanyLead(
   id: string,
   data: UpdateLeadData
 ) {
-  const companyId =
-    await getCurrentCompanyId();
+  const user = await requirePermission(PERMISSIONS.COMMERCIAL);
+  const companyId = user.companyId;
 
   const currentLead = await findLeadById(
     id,
@@ -111,11 +116,39 @@ export async function updateCompanyLead(
   ) {
     await createLeadActivity({
       leadId: id,
+      userId: user.id,
       type: "SISTEMA",
-      title: "Status atualizado",
-      notes: `Status alterado de ${statusLabel(
+      title: `Moveu o card "${currentLead.companyName}" de ${statusLabel(
         currentLead.status
-      )} para ${statusLabel(data.status)}.`,
+      )} para ${statusLabel(data.status)}`,
+    });
+  }
+
+  if (
+    data.estimatedValue !== undefined &&
+    data.estimatedValue !== currentLead.estimatedValue
+  ) {
+    await createLeadActivity({
+      leadId: id,
+      userId: user.id,
+      type: "SISTEMA",
+      title: "Alterou o preço estimado",
+    });
+  }
+
+  if (
+    data.notes !== undefined &&
+    data.notes !== currentLead.notes
+  ) {
+    await createLeadActivity({
+      leadId: id,
+      userId: user.id,
+      type: "SISTEMA",
+      title: data.notes
+        ? currentLead.notes
+          ? "Alterou observações"
+          : "Adicionou observações"
+        : "Removeu observações",
     });
   }
 
@@ -198,6 +231,36 @@ export async function deleteCompanyLead(
   );
 }
 
+export async function archiveCompanyLead(id: string) {
+  const user = await requireRole("EXECUTIVO");
+  const lead = await findLeadById(id, user.companyId);
+
+  if (!lead) {
+    throw new Error("Lead não encontrado.");
+  }
+
+  if (lead.archivedAt) {
+    return lead;
+  }
+
+  return setLeadArchivedAt(id, user.companyId, new Date());
+}
+
+export async function restoreCompanyLead(id: string) {
+  const user = await requireRole("EXECUTIVO");
+  const lead = await findLeadById(id, user.companyId);
+
+  if (!lead) {
+    throw new Error("Lead não encontrado.");
+  }
+
+  if (!lead.archivedAt) {
+    return lead;
+  }
+
+  return setLeadArchivedAt(id, user.companyId, null);
+}
+
 export async function convertLeadToClient(
   id: string
 ) {
@@ -277,6 +340,8 @@ function statusLabel(
 }
 
 export async function createCompanyLeadActivity(data: { leadId: string; type: string; title: string; notes?: string | null }) {
-  await getCompanyLeadById(data.leadId);
-  return createLeadActivity(data);
+  const user = await requirePermission(PERMISSIONS.COMMERCIAL);
+  const lead = await findLeadById(data.leadId, user.companyId);
+  if (!lead) throw new Error("Lead não encontrado.");
+  return createLeadActivity({ ...data, userId: user.id });
 }

@@ -121,7 +121,7 @@ export function Topbar({ role }: { role: AppRole }) {
     getPageInformation(pathname);
 
   return (
-    <header className="sticky top-0 z-30 mb-6 border-b border-white/[0.06] bg-[#0b0b0d]/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:mb-8 lg:px-8">
+    <header className="prd-topbar sticky top-0 z-30 mb-6 border-b border-white/[0.06] bg-[#0b0b0d]/85 px-4 py-4 backdrop-blur-xl sm:px-6 lg:mb-8 lg:px-8">
       <div className="flex items-center justify-between gap-5">
         <MobileNav role={role} />
         <div className="min-w-0">

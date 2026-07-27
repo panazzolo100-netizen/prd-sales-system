@@ -5,6 +5,7 @@ export async function countLeads(companyId: string) {
   return prisma.lead.count({
     where: {
       companyId,
+      archivedAt: null,
     },
   });
 }
@@ -22,6 +23,7 @@ export async function countWonLeads(companyId: string) {
     where: {
       companyId,
       status: LeadStatus.GANHO,
+      archivedAt: null,
     },
   });
 }
@@ -33,6 +35,7 @@ export async function countProposalLeads(
     where: {
       companyId,
       status: LeadStatus.PROPOSTA,
+      archivedAt: null,
     },
   });
 }
@@ -177,6 +180,7 @@ export async function countPipelineByStatus(
 
       where: {
         companyId,
+        archivedAt: null,
       },
 
       _count: {

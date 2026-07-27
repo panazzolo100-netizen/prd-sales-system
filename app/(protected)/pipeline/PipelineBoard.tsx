@@ -40,6 +40,7 @@ type PipelineLead = {
   companyName: string;
   contactName: string;
   estimatedValue: number | null;
+  notes: string | null;
   status: LeadStatus;
   updatedAt: Date | string;
 
@@ -54,6 +55,7 @@ type PipelineLead = {
 
 type PipelineBoardProps = {
   initialLeads: PipelineLead[];
+  canArchive: boolean;
 };
 
 type ToastMessage = {
@@ -104,6 +106,16 @@ function formatCurrency(value: number | null) {
     currency: "BRL",
     maximumFractionDigits: 0,
   }).format(value ?? 0);
+}
+
+function formatEstimatedValue(value: number | null) {
+  if (!value || !Number.isFinite(value)) {
+    return "Valor não informado";
+  }
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
 }
 
 function formatPercentage(value: number) {
@@ -181,6 +193,7 @@ function getLeadReferenceDate(
 
 export function PipelineBoard({
   initialLeads,
+  canArchive,
 }: PipelineBoardProps) {
   const [leads, setLeads] =
     useState(initialLeads);
@@ -566,6 +579,30 @@ export function PipelineBoard({
         stage?.nome ?? "a nova etapa"
       }.`
     );
+  }
+
+  function handleLeadChange(updatedLead: LeadListItem) {
+    setLeads((current) =>
+      current.map((lead) =>
+        lead.id === updatedLead.id
+          ? {
+              ...lead,
+              companyName: updatedLead.companyName,
+              contactName: updatedLead.contactName,
+              estimatedValue: updatedLead.estimatedValue,
+              notes: updatedLead.notes,
+              status: updatedLead.status,
+              updatedAt: updatedLead.updatedAt,
+            }
+          : lead
+      )
+    );
+    setSelectedLead((current) =>
+      current?.id === updatedLead.id
+        ? { ...current, ...updatedLead }
+        : current
+    );
+    showToast("success", "Valor estimado atualizado com sucesso.");
   }
 
   return (
@@ -1002,6 +1039,13 @@ export function PipelineBoard({
                             openMenuLeadId ===
                             lead.id;
 
+                          const terminalCardTone =
+                            lead.status === LeadStatus.GANHO
+                              ? "border-emerald-300/70 bg-emerald-50/80 hover:border-emerald-400 dark:border-emerald-500/30 dark:bg-emerald-950/20 dark:hover:border-emerald-500/45"
+                              : lead.status === LeadStatus.PERDIDO
+                                ? "border-red-300/70 bg-red-50/80 hover:border-red-400 dark:border-red-500/30 dark:bg-red-950/20 dark:hover:border-red-500/45"
+                                : null;
+
                           return (
                             <article
                               key={lead.id}
@@ -1065,9 +1109,11 @@ export function PipelineBoard({
                                   ? "pointer-events-none opacity-70"
                                   : ""
                               } ${
-                                hasAlert
-                                  ? "border-red-500/40 bg-red-950/20 hover:border-red-500/60"
-                                  : "border-zinc-800 bg-zinc-900 hover:border-orange-500/40"
+                                terminalCardTone
+                                  ? terminalCardTone
+                                  : hasAlert
+                                    ? "border-red-500/40 bg-red-950/20 hover:border-red-500/60"
+                                    : "border-zinc-800 bg-zinc-900 hover:border-orange-500/40"
                               }`}
                             >
                               <div className="flex items-start justify-between gap-3">
@@ -1229,7 +1275,7 @@ export function PipelineBoard({
                                     className="text-orange-500"
                                   />
 
-                                  {formatCurrency(
+                                  {formatEstimatedValue(
                                     lead.estimatedValue
                                   )}
                                 </div>
@@ -1298,6 +1344,18 @@ export function PipelineBoard({
         lead={selectedLead}
         open={selectedLead !== null}
         initialTab={selectedTab}
+        hiddenTabs={["Engenharia"]}
+        showInternalNotes
+        showActivityAuthors={canArchive}
+        canArchive={canArchive}
+        onArchived={(leadId) => {
+          setLeads((current) =>
+            current.filter((lead) => lead.id !== leadId)
+          );
+          setSelectedLead(null);
+          showToast("success", "Oportunidade arquivada com sucesso.");
+        }}
+        onLeadChange={handleLeadChange}
         onClose={() => {
           setSelectedLead(null);
           setSelectedTab("Resumo");

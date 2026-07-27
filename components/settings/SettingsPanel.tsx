@@ -1,16 +1,17 @@
 "use client";
 
-import { Building2, CheckCircle2, Loader2, Settings2, ShieldCheck, UserRound, XCircle } from "lucide-react";
+import { Building2, CheckCircle2, Loader2, Monitor, Moon, Palette, Settings2, ShieldCheck, Sun, UserRound, XCircle } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { type ThemePreference, useTheme } from "@/components/theme/ThemeProvider";
 
-type Tab = "empresa" | "perfil" | "preferencias" | "seguranca";
+type Tab = "empresa" | "perfil" | "preferencias" | "aparencia" | "seguranca";
 type Props = {
   user: { name: string; email: string; role: string; jobTitle: string | null; displayName: string | null; homePage: string; interfaceDensity: string };
   company: { name: string; tradeName: string | null; document: string | null; email: string | null; phone: string | null; address: string | null; logoUrl: string | null };
 };
-const tabs: { value: Tab; label: string }[] = [{ value: "empresa", label: "Empresa" }, { value: "perfil", label: "Perfil" }, { value: "preferencias", label: "Preferências" }, { value: "seguranca", label: "Segurança" }];
+const tabs: { value: Tab; label: string }[] = [{ value: "empresa", label: "Empresa" }, { value: "perfil", label: "Perfil" }, { value: "preferencias", label: "Preferências" }, { value: "aparencia", label: "Aparência" }, { value: "seguranca", label: "Segurança" }];
 
 export function SettingsPanel({ user, company }: Props) {
   const router = useRouter();
@@ -49,9 +50,32 @@ export function SettingsPanel({ user, company }: Props) {
     {activeTab === "empresa" && <form onSubmit={(event) => submit("company", event)} className="rounded-2xl border border-white/[0.07] bg-zinc-900 p-6"><Header icon={Building2} title="Empresa" text="Dados administrativos e identidade da empresa." /><div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Nome da empresa" name="name" defaultValue={company.name} required /><Field label="Nome comercial" name="tradeName" defaultValue={company.tradeName ?? ""} /><Field label="Documento" name="document" defaultValue={company.document ?? ""} /><Field label="E-mail" name="email" type="email" defaultValue={company.email ?? ""} /><Field label="Telefone" name="phone" defaultValue={company.phone ?? ""} /><Field label="Endereço" name="address" defaultValue={company.address ?? ""} /><div className="sm:col-span-2"><Field label="URL da logo" name="logoUrl" type="url" defaultValue={company.logoUrl ?? ""} /></div></div><Save loading={saving === "company"} text="Salvar empresa" /></form>}
     {activeTab === "perfil" && <form onSubmit={(event) => submit("profile", event)} className="rounded-2xl border border-white/[0.07] bg-zinc-900 p-6"><Header icon={UserRound} title="Perfil" text="Informações exibidas dentro do ERP." /><div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Nome do usuário" name="name" defaultValue={user.name} required /><Field label="E-mail" type="email" defaultValue={user.email} disabled /><Field label="Cargo ou função" name="jobTitle" defaultValue={user.jobTitle ?? ""} /><ReadOnly label="Papel atual" value={user.role.replaceAll("_", " ")} /></div><Save loading={saving === "profile"} text="Salvar perfil" /></form>}
     {activeTab === "preferencias" && <form onSubmit={(event) => submit("preferences", event)} className="rounded-2xl border border-white/[0.07] bg-zinc-900 p-6"><Header icon={Settings2} title="Preferências" text="Personalize informações e comportamento da interface." /><div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Nome exibido" name="displayName" defaultValue={user.displayName ?? user.name} /><SelectField label="Tela inicial" name="homePage" defaultValue={user.homePage} options={[["/", "Dashboard"], ["/leads", "Oportunidades"], ["/pipeline", "Pipeline"], ["/agenda", "Agenda"], ["/engenharia", "Engenharia"], ["/financeiro", "Financeiro"]]} /><SelectField label="Densidade da interface" name="interfaceDensity" defaultValue={user.interfaceDensity} options={[["COMFORTABLE", "Confortável"], ["COMPACT", "Compacta"]]} /></div><Save loading={saving === "preferences"} text="Salvar preferências" /></form>}
+    {activeTab === "aparencia" && <AppearanceSettings />}
     {activeTab === "seguranca" && <section className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6"><Header icon={ShieldCheck} title="Segurança" text="Acesso e autenticação protegidos pelo Supabase Auth." /><div className="mt-6 grid gap-4 sm:grid-cols-3"><ReadOnly label="E-mail de acesso" value={user.email} /><ReadOnly label="Papel atual" value={user.role.replaceAll("_", " ")} /><ReadOnly label="Empresa vinculada" value={company.tradeName ?? company.name} /></div><Link href={`/esqueci-minha-senha?email=${encodeURIComponent(user.email)}`} className="mt-6 inline-flex h-11 items-center rounded-xl bg-orange-500 px-5 text-sm font-bold text-white transition hover:bg-orange-600">Alterar senha</Link></section>}
     {toast && <div role={toast.type === "error" ? "alert" : "status"} className={`fixed bottom-6 right-6 z-[120] flex items-center gap-3 rounded-xl border px-5 py-4 text-sm font-semibold shadow-2xl ${toast.type === "success" ? "border-emerald-500/30 bg-emerald-950 text-emerald-300" : "border-red-500/30 bg-red-950 text-red-300"}`}>{toast.type === "success" ? <CheckCircle2 size={18} /> : <XCircle size={18} />}{toast.text}</div>}
   </>;
+}
+const themeOptions: Array<{ value: ThemePreference; label: string; description: string; icon: typeof Moon }> = [
+  { value: "dark", label: "Escuro", description: "A experiência original do PRD Sales System.", icon: Moon },
+  { value: "light", label: "Claro", description: "Interface clara e otimizada para ambientes de escritório.", icon: Sun },
+  { value: "system", label: "Sistema", description: "Acompanha automaticamente a preferência do dispositivo.", icon: Monitor },
+];
+function AppearanceSettings() {
+  const { preference, resolvedTheme, setPreference } = useTheme();
+  return <section className="rounded-2xl border border-white/[0.07] bg-zinc-900 p-6">
+    <Header icon={Palette} title="Aparência" text="Escolha como o PRD Sales System deve aparecer neste dispositivo." />
+    <div className="mt-6 grid gap-4 lg:grid-cols-3">
+      {themeOptions.map(({ value, label, description, icon: Icon }) => {
+        const active = preference === value;
+        return <button key={value} type="button" onClick={() => setPreference(value)} aria-pressed={active} className={`theme-option flex min-h-36 flex-col items-start rounded-2xl border p-5 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-orange-500/15 ${active ? "border-orange-500 bg-orange-500/10" : "border-white/[0.08] bg-zinc-950 hover:border-orange-500/30 hover:bg-white/[0.04]"}`}>
+          <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${active ? "bg-orange-500 text-white" : "bg-zinc-900 text-zinc-400"}`}><Icon size={21} /></span>
+          <span className="mt-4 font-bold text-white">{label}</span>
+          <span className="mt-1 text-sm leading-5 text-zinc-500">{description}</span>
+        </button>;
+      })}
+    </div>
+    <p className="mt-5 text-sm text-zinc-500">Tema aplicado agora: <strong className="text-zinc-300">{resolvedTheme === "light" ? "Claro" : "Escuro"}</strong>. A escolha fica salva neste navegador.</p>
+  </section>;
 }
 function Header({ icon: Icon, title, text }: { icon: typeof Building2; title: string; text: string }) { return <div className="flex gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-400"><Icon size={21} /></div><div><h2 className="text-xl font-bold text-white">{title}</h2><p className="mt-1 text-sm text-zinc-500">{text}</p></div></div>; }
 function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) { return <label className="block text-sm font-semibold text-zinc-400">{label}<input {...props} className="mt-2 h-11 w-full rounded-xl border border-white/[0.08] bg-zinc-950 px-4 text-sm text-white outline-none focus:border-orange-500/60 disabled:opacity-50" /></label>; }

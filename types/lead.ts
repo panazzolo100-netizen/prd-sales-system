@@ -18,6 +18,9 @@ export type LeadActivityItem = {
   title: string;
   notes: string | null;
   createdAt: Date;
+  user?: {
+    name: string;
+  } | null;
 };
 
 export type LeadFileItem = {
