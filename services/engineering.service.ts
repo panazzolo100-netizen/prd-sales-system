@@ -15,6 +15,8 @@ import {
   resolveServiceType,
 } from "@/lib/service-technical-details";
 import { toProjectDocumentResponses } from "@/services/project-documents.service";
+import { changeProjectStatus } from "@/services/projects.service";
+import { assertStatusTransition } from "@/lib/kanban/status-transitions";
 
 async function assertLeadAccess(leadId: string) { if (!await findLeadById(leadId, await getCurrentCompanyId())) throw new Error("Lead não encontrado."); }
 
@@ -74,4 +76,11 @@ export async function createEngineeringProject(data: { title: string; clientId: 
 }
 async function getCurrentCompanyId() {
   return (await requirePermission(PERMISSIONS.ENGINEERING)).companyId;
+}
+
+export async function changeEngineeringStatus(id: string, status: string, expectedUpdatedAt?: Date) {
+  const project = await getEngineeringProjectDetails(id);
+  if (!project) throw new Error("Projeto de engenharia não encontrado.");
+  assertStatusTransition("engineering", project.status, status);
+  return changeProjectStatus(id, status, expectedUpdatedAt);
 }

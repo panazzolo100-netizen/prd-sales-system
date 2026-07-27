@@ -133,6 +133,26 @@ export async function updateProject(
   });
 }
 
+export async function updateProjectStatus(
+  id: string,
+  companyId: string,
+  status: string,
+  expectedUpdatedAt?: Date
+) {
+  const current = await prisma.project.findFirst({ where: { id, companyId } });
+  if (!current) return { kind: "not-found" as const };
+  if (expectedUpdatedAt && current.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+    return { kind: "conflict" as const };
+  }
+  const changed = await prisma.project.updateMany({
+    where: { id, companyId, updatedAt: current.updatedAt },
+    data: { status },
+  });
+  if (changed.count !== 1) return { kind: "conflict" as const };
+  const project = await prisma.project.findUniqueOrThrow({ where: { id } });
+  return { kind: "updated" as const, project, previousStatus: current.status };
+}
+
 export async function findProjectById(
   id: string,
   companyId: string

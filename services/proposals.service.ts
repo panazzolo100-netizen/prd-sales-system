@@ -10,8 +10,11 @@ import {
   findProposalByLead,
   findProposalsByCompany,
   upsertProposal,
+  updateProposalStatus,
+  findProposalStatus,
   type UpdateProposalData,
 } from "@/repositories/proposals.repository";
+import { assertStatusTransition } from "@/lib/kanban/status-transitions";
 
 import {
   findDimensioningByLead,
@@ -133,4 +136,18 @@ export async function deleteCompanyProposal(id: string) {
     );
   }
   return deleted;
+}
+
+export async function changeProposalStatus(id: string, status: string, expectedUpdatedAt?: Date) {
+  const companyId = await getCurrentCompanyId();
+  const current = await findProposalStatus(id, companyId);
+  if (!current) throw new Error("Proposta não encontrada.");
+  assertStatusTransition("proposals", current.status, status);
+  if (status === "ENVIADA" && (!current.title.trim() || current.amount <= 0)) {
+    throw new Error("Informe título e valor antes de enviar a proposta.");
+  }
+  const result = await updateProposalStatus(id, companyId, status, expectedUpdatedAt);
+  if (result.kind === "not-found") throw new Error("Proposta não encontrada.");
+  if (result.kind === "conflict") throw new Error("CONFLICT");
+  return result.proposal;
 }

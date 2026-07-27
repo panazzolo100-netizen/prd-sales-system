@@ -29,6 +29,7 @@ const ROUTE_PERMISSIONS: Array<{
   { prefix: "/projetos", permission: PERMISSIONS.PROJECTS },
   { prefix: "/api/leads/engineering", permission: PERMISSIONS.ENGINEERING },
   { prefix: "/api/leads/dimensioning", permission: PERMISSIONS.ENGINEERING },
+  { prefix: "/api/engineering", permission: PERMISSIONS.ENGINEERING },
   { prefix: "/engenharia", permission: PERMISSIONS.ENGINEERING },
   { prefix: "/api/os", permission: PERMISSIONS.SERVICE_ORDERS_INTERNAL },
   { prefix: "/os", permission: PERMISSIONS.SERVICE_ORDERS_INTERNAL },

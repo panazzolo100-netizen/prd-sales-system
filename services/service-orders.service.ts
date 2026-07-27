@@ -12,7 +12,9 @@ import {
   findServiceOrdersByCompany,
   updateServiceOrderChecklist,
   updateServiceOrderRepository,
+  updateServiceOrderStatus,
 } from "@/repositories/service-orders.repository";
+import { assertStatusTransition } from "@/lib/kanban/status-transitions";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission } from "@/services/auth.service";
 
@@ -603,4 +605,18 @@ export async function getCompanyServiceOrderDashboard(id: string) {
 }
 async function getCurrentCompanyId() {
   return (await requirePermission(PERMISSIONS.SERVICE_ORDERS_INTERNAL)).companyId;
+}
+
+export async function changeServiceOrderStatus(id: string, status: string, expectedUpdatedAt?: Date) {
+  const companyId = await getCurrentCompanyId();
+  const current = await findServiceOrderForUpdate(id, companyId);
+  if (!current) throw new Error("Ordem de Serviço não encontrada.");
+  assertStatusTransition("service-orders", current.status, status);
+  const result = await updateServiceOrderStatus(id, companyId, status, expectedUpdatedAt);
+  if (result.kind === "conflict") throw new Error("CONFLICT");
+  if (result.kind === "not-found") throw new Error("Ordem de Serviço não encontrada.");
+  if (result.kind === "blocked") throw new Error(result.message);
+  await registerServiceOrderEvent({ serviceOrderId: id, type: "STATUS_ALTERADO", title: "Status alterado", description: `${current.status} → ${status}` });
+  if (status === "CONCLUIDA") await completeServiceOrderProject(result.projectId, companyId);
+  return result.serviceOrder;
 }

@@ -94,6 +94,42 @@ export async function updateProposal(
   });
 }
 
+export async function updateProposalStatus(
+  id: string,
+  companyId: string,
+  status: string,
+  expectedUpdatedAt?: Date
+) {
+  const current = await prisma.proposal.findFirst({
+    where: {
+      id,
+      OR: [{ lead: { companyId } }, { client: { companyId } }],
+    },
+  });
+  if (!current) return { kind: "not-found" as const };
+  if (expectedUpdatedAt && current.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+    return { kind: "conflict" as const };
+  }
+  const changed = await prisma.proposal.updateMany({
+    where: {
+      id,
+      updatedAt: current.updatedAt,
+      OR: [{ lead: { companyId } }, { client: { companyId } }],
+    },
+    data: { status },
+  });
+  if (changed.count !== 1) return { kind: "conflict" as const };
+  const proposal = await prisma.proposal.findUniqueOrThrow({ where: { id } });
+  return { kind: "updated" as const, proposal, previousStatus: current.status };
+}
+
+export async function findProposalStatus(id: string, companyId: string) {
+  return prisma.proposal.findFirst({
+    where: { id, OR: [{ lead: { companyId } }, { client: { companyId } }] },
+    select: { status: true, title: true, amount: true },
+  });
+}
+
 export async function upsertProposal(
   leadId: string,
   data: UpdateProposalData

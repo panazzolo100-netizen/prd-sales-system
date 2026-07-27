@@ -16,6 +16,19 @@ export async function findServiceOrdersByCompany(
       scheduledDate: true,
       customerSignature: true,
       technicianSignature: true,
+      responsible: true,
+      updatedAt: true,
+      checklistArt: true,
+      checklistProjectApproved: true,
+      checklistMaterialsSeparated: true,
+      checklistStructureInstalled: true,
+      checklistModulesInstalled: true,
+      checklistInverterInstalled: true,
+      checklistDcCabling: true,
+      checklistAcCabling: true,
+      checklistCommissioning: true,
+      checklistCustomerTraining: true,
+      checklistDelivered: true,
       project: {
         select: {
           client: {
@@ -181,6 +194,62 @@ export async function findServiceOrderSignatures(
       signedAt: true,
     },
   });
+}
+
+export async function updateServiceOrderStatus(
+  id: string,
+  companyId: string,
+  status: string,
+  expectedUpdatedAt?: Date
+) {
+  const current = await prisma.serviceOrder.findFirst({
+    where: { id, companyId },
+    select: {
+      status: true,
+      updatedAt: true,
+      projectId: true,
+      customerSignature: true,
+      technicianSignature: true,
+      checklistArt: true,
+      checklistProjectApproved: true,
+      checklistMaterialsSeparated: true,
+      checklistStructureInstalled: true,
+      checklistModulesInstalled: true,
+      checklistInverterInstalled: true,
+      checklistDcCabling: true,
+      checklistAcCabling: true,
+      checklistCommissioning: true,
+      checklistCustomerTraining: true,
+      checklistDelivered: true,
+    },
+  });
+  if (!current) return { kind: "not-found" as const };
+  if (expectedUpdatedAt && current.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+    return { kind: "conflict" as const };
+  }
+  const checklistComplete = [
+    current.checklistArt, current.checklistProjectApproved, current.checklistMaterialsSeparated,
+    current.checklistStructureInstalled, current.checklistModulesInstalled, current.checklistInverterInstalled,
+    current.checklistDcCabling, current.checklistAcCabling, current.checklistCommissioning,
+    current.checklistCustomerTraining, current.checklistDelivered,
+  ].every(Boolean);
+  if (status === "CONCLUIDA" && (!checklistComplete || !current.customerSignature || !current.technicianSignature)) {
+    return { kind: "blocked" as const, message: "Checklist e as duas assinaturas são obrigatórios para concluir a OS." };
+  }
+  if (status === "AGUARDANDO_ASSINATURA" && !checklistComplete) {
+    return { kind: "blocked" as const, message: "Conclua o checklist antes de aguardar assinaturas." };
+  }
+  const changed = await prisma.serviceOrder.updateMany({
+    where: { id, companyId, updatedAt: current.updatedAt },
+    data: {
+      status,
+      startedDate: status === "EM_ANDAMENTO" ? new Date() : undefined,
+      completedDate: status === "CONCLUIDA" ? new Date() : status === "EM_ANDAMENTO" ? null : undefined,
+    },
+  });
+  if (changed.count !== 1) return { kind: "conflict" as const };
+  const serviceOrder = await prisma.serviceOrder.findUniqueOrThrow({ where: { id } });
+  return { kind: "updated" as const, serviceOrder, previousStatus: current.status, projectId: current.projectId };
 }
 
 export async function findClientServiceOrders(companyId: string, clientId: string) {
