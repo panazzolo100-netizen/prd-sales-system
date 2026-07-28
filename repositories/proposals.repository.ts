@@ -134,56 +134,48 @@ export async function upsertProposal(
   leadId: string,
   data: UpdateProposalData
 ) {
-  const existing =
-    await findProposalByLead(leadId);
-
-  if (existing) {
-    return prisma.proposal.update({
-      where: {
-        id: existing.id,
-      },
-
-      data,
+  return prisma.$transaction(async (transaction) => {
+    const existing = await transaction.proposal.findFirst({
+      where: { leadId },
+      select: { id: true },
     });
-  }
 
-  return prisma.proposal.create({
-    data: {
-      leadId,
+    const proposal = existing
+      ? await transaction.proposal.update({
+          where: { id: existing.id },
+          data,
+        })
+      : await transaction.proposal.create({
+          data: {
+            leadId,
+            title: data.title ?? "Proposta Solar",
+            amount: data.amount ?? 0,
+            status: data.status,
+            validUntil: data.validUntil,
+            paymentTerms: data.paymentTerms,
+            executionDeadline: data.executionDeadline,
+            commercialNotes: data.commercialNotes,
+            systemPower: data.systemPower,
+            monthlySaving: data.monthlySaving,
+            annualSaving: data.annualSaving,
+            payback: data.payback,
+          },
+        });
 
-      title:
-        data.title ?? "Proposta Solar",
+    const lead = await transaction.lead.update({
+      where: { id: leadId },
+      data: { estimatedValue: proposal.amount },
+      select: {
+        estimatedValue: true,
+        updatedAt: true,
+      },
+    });
 
-      amount:
-        data.amount ?? 0,
-
-      status:
-        data.status,
-
-      validUntil:
-        data.validUntil,
-
-      paymentTerms:
-        data.paymentTerms,
-
-      executionDeadline:
-        data.executionDeadline,
-
-      commercialNotes:
-        data.commercialNotes,
-
-      systemPower:
-        data.systemPower,
-
-      monthlySaving:
-        data.monthlySaving,
-
-      annualSaving:
-        data.annualSaving,
-
-      payback:
-        data.payback,
-    },
+    return {
+      ...proposal,
+      leadEstimatedValue: lead.estimatedValue,
+      leadUpdatedAt: lead.updatedAt,
+    };
   });
 }
 
@@ -268,6 +260,7 @@ export async function deleteProposal(
         ],
       },
       select: {
+        leadId: true,
         status: true,
         lead: {
           select: {
@@ -309,8 +302,25 @@ export async function deleteProposal(
     ) {
       return null;
     }
-    return transaction.proposal.delete({
+    const deleted = await transaction.proposal.delete({
       where: { id },
     });
+
+    if (proposal.leadId) {
+      const latestProposal = await transaction.proposal.findFirst({
+        where: { leadId: proposal.leadId },
+        orderBy: { updatedAt: "desc" },
+        select: { amount: true },
+      });
+
+      if (latestProposal) {
+        await transaction.lead.update({
+          where: { id: proposal.leadId },
+          data: { estimatedValue: latestProposal.amount },
+        });
+      }
+    }
+
+    return deleted;
   }, { isolationLevel: "Serializable" });
 }

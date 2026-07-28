@@ -65,6 +65,7 @@ type Props = {
   initialTab?: LeadTab;
   hiddenTabs?: LeadTab[];
   showActivityAuthors?: boolean;
+  onLeadChange?: (lead: LeadListItem) => void;
 };
 
 
@@ -73,6 +74,7 @@ export function LeadTabs({
   initialTab = "Resumo",
   hiddenTabs = [],
   showActivityAuthors = false,
+  onLeadChange,
 }: Props) {
   const resolvedType = inferLegacyServiceType(lead);
   const solar = isSolarService(resolvedType);
@@ -122,7 +124,10 @@ export function LeadTabs({
         )}
 
         {active === "Propostas" && (
-          <LeadProposals lead={lead} />
+          <LeadProposals
+            lead={lead}
+            onLeadChange={onLeadChange}
+          />
         )}
 
         {active === "Engenharia" && (
@@ -850,17 +855,13 @@ function LeadTimeline({ lead, showActivityAuthors = false }: Props) {
 
 
 
-function LeadProposals({ lead }: Props) {
-
-
-  const router = useRouter();
-
-
+function LeadProposals({ lead, onLeadChange }: Props) {
   const [title,setTitle] = useState("");
 
   const [amount,setAmount] = useState("");
 
   const [saving,setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
 
 
@@ -872,26 +873,42 @@ async function createProposal() {
   if (!title || !amount) return;
 
   setSaving(true);
+  setSaveError(null);
 
-  const response = await fetch("/api/proposals", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      leadId: lead.id,
-      title,
-      amount: Number(amount),
-    }),
-  });
+  try {
+    const response = await fetch("/api/proposals", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        leadId: lead.id,
+        title,
+        amount: Number(amount),
+      }),
+    });
+    const savedProposal = await response.json();
+    if (!response.ok) {
+      throw new Error(savedProposal.error ?? "Não foi possível salvar a proposta.");
+    }
 
-  if (response.ok) {
+    onLeadChange?.({
+      ...lead,
+      proposal: savedProposal,
+      estimatedValue: savedProposal.leadEstimatedValue,
+      updatedAt: savedProposal.leadUpdatedAt,
+    });
     setTitle("");
     setAmount("");
-    router.refresh();
+  } catch (error) {
+    setSaveError(
+      error instanceof Error
+        ? error.message
+        : "Não foi possível salvar a proposta."
+    );
+  } finally {
+    setSaving(false);
   }
-
-  setSaving(false);
 }
 
 function generatePdf() {
@@ -1195,6 +1212,11 @@ function generatePdf() {
             : "Criar proposta"}
 
         </button>
+        {saveError && (
+          <p role="alert" className="text-sm font-medium text-red-400">
+            {saveError}
+          </p>
+        )}
 
 
       </div>
