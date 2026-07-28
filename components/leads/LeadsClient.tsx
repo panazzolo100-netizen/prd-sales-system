@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -20,6 +20,8 @@ export function LeadsClient({
   leads,
 }: LeadsClientProps) {
   const router = useRouter();
+  const [currentLeads, setCurrentLeads] =
+    useState(leads);
 
   const [newDrawerOpen, setNewDrawerOpen] =
     useState(false);
@@ -41,7 +43,7 @@ export function LeadsClient({
       .trim()
       .toLowerCase();
 
-    return leads.filter((lead) => {
+    return currentLeads.filter((lead) => {
       const matchesSearch =
         !normalizedSearch ||
         lead.companyName
@@ -62,7 +64,22 @@ export function LeadsClient({
 
       return matchesSearch && matchesStatus;
     });
-  }, [leads, search, status]);
+  }, [currentLeads, search, status]);
+
+  useEffect(() => {
+    setCurrentLeads(leads);
+  }, [leads]);
+
+  function handleLeadChange(updatedLead: LeadListItem) {
+    setSelectedLead(updatedLead);
+    setCurrentLeads((current) =>
+      current.map((lead) =>
+        lead.id === updatedLead.id
+          ? { ...lead, ...updatedLead }
+          : lead
+      )
+    );
+  }
 
   async function openLead(id: string) {
     setLoadingLead(true);
@@ -109,10 +126,11 @@ export function LeadsClient({
         onClose={() =>
           setSelectedLead(null)
         }
+        onLeadChange={handleLeadChange}
       />}
 
       <LeadsHeader
-        totalLeads={leads.length}
+          totalLeads={currentLeads.length}
         onNewLead={() =>
           setNewDrawerOpen(true)
         }
@@ -139,7 +157,7 @@ export function LeadsClient({
           </strong>{" "}
           de{" "}
           <strong className="text-white">
-            {leads.length}
+            {currentLeads.length}
           </strong>{" "}
           oportunidade(s)
         </p>

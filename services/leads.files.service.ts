@@ -29,7 +29,11 @@ type LeadFileRecord = {
   url: string;
   mimeType: string;
   size: number;
+  observation: string | null;
   createdAt: Date;
+  uploadedBy: {
+    name: string;
+  } | null;
 };
 
 async function resolveLeadFileAccessUrl(file: { url: string }, companyId: string) {
@@ -79,10 +83,24 @@ export async function uploadCompanyLeadFile(data: {
   size: number;
   buffer: Buffer;
   kind?: "PROPOSAL_INTERNAL" | "PROPOSAL_CLIENT";
+  observation?: string;
 }) {
   const user = await getCurrentAppUser();
   const lead = await findLeadById(data.leadId, user.companyId);
   if (!lead) throw new Error("Lead não encontrado.");
+  const observation = data.observation?.trim() || null;
+  if (!data.kind && !observation) {
+    throw new PrivateStorageError(
+      "INVALID_FILE",
+      "A observação do arquivo é obrigatória."
+    );
+  }
+  if (observation && observation.length > 160) {
+    throw new PrivateStorageError(
+      "INVALID_FILE",
+      "A observação deve possuir no máximo 160 caracteres."
+    );
+  }
   if (!(LEAD_FILE_ALLOWED_MIME_TYPES as readonly string[]).includes(data.mimeType)) {
     throw new PrivateStorageError("FILE_TYPE_NOT_ALLOWED", "O tipo do arquivo não é permitido.");
   }
@@ -148,6 +166,8 @@ export async function uploadCompanyLeadFile(data: {
       url: storedFile.reference,
       mimeType: data.mimeType,
       size: data.size,
+      observation,
+      uploadedById: user.id,
     });
   } catch (persistenceError) {
     try {
@@ -185,7 +205,9 @@ export async function uploadCompanyLeadFile(data: {
         : data.kind === "PROPOSAL_CLIENT"
           ? "PDF da proposta anexado"
           : "Arquivo anexado",
-    notes: data.name,
+    notes: observation
+      ? `${observation} — ${data.name}`
+      : data.name,
   });
   return toLeadFileResponse(file, user.companyId);
 }

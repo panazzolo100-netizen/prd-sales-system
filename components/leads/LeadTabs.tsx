@@ -65,7 +65,11 @@ type Props = {
       accessUrl: string | null;
       mimeType: string;
       size: number;
+      observation: string | null;
       createdAt: Date;
+      uploadedBy: {
+        name: string;
+      } | null;
     }[];
   };
 
@@ -147,7 +151,10 @@ export function LeadTabs({
         )}
 
         {active === "Arquivos" && (
-          <LeadFiles lead={lead} />
+          <LeadFiles
+            lead={lead}
+            onLeadChange={onLeadChange}
+          />
         )}
       </div>
     </>
@@ -1780,61 +1787,52 @@ function ProposalExcelPreviewCard({
   );
 }
 
-function LeadFiles({ lead }: Props) {
-
-  const router = useRouter();
+function LeadFiles({ lead, onLeadChange }: Props) {
+  const [observation, setObservation] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileMessage, setFileMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-
-  async function upload(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
-
-    const file =
-      event.target.files?.[0];
-
-
-    if (!file) return;
+  async function upload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedObservation = observation.trim();
+    if (!normalizedObservation || !selectedFile || uploading) return;
 
     setUploading(true);
     setFileMessage("");
 
-
-
     const formData = new FormData();
-
-
-    formData.append(
-      "leadId",
-      lead.id
-    );
-
-
-    formData.append(
-      "file",
-      file
-    );
-
-
+    formData.append("leadId", lead.id);
+    formData.append("observation", normalizedObservation);
+    formData.append("file", selectedFile);
 
     try {
       const response = await fetch("/api/leads/files", {
         method: "POST",
         body: formData,
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Erro ao enviar arquivo.");
+      const savedFile = await response.json();
+      if (!response.ok) {
+        throw new Error(savedFile.error ?? "Erro ao enviar arquivo.");
+      }
+      onLeadChange?.({
+        ...lead,
+        files: [
+          savedFile,
+          ...(lead.files ?? []).filter((file) => file.id !== savedFile.id),
+        ],
+      });
+      setObservation("");
+      setSelectedFile(null);
       setFileMessage("Arquivo enviado com sucesso.");
-      event.target.value = "";
-      router.refresh();
     } catch (error) {
-      setFileMessage(error instanceof Error ? error.message : "Erro ao enviar arquivo.");
+      setFileMessage(
+        error instanceof Error ? error.message : "Erro ao enviar arquivo."
+      );
     } finally {
       setUploading(false);
     }
-
   }
 
   async function removeFile(id: string) {
@@ -1848,104 +1846,131 @@ function LeadFiles({ lead }: Props) {
         body: JSON.stringify({ id }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Erro ao excluir arquivo.");
+      if (!response.ok) {
+        throw new Error(result.error ?? "Erro ao excluir arquivo.");
+      }
+      onLeadChange?.({
+        ...lead,
+        files: (lead.files ?? []).filter((file) => file.id !== id),
+      });
       setFileMessage("Arquivo removido com sucesso.");
-      router.refresh();
     } catch (error) {
-      setFileMessage(error instanceof Error ? error.message : "Erro ao excluir arquivo.");
+      setFileMessage(
+        error instanceof Error ? error.message : "Erro ao excluir arquivo."
+      );
     } finally {
       setDeletingId(null);
     }
   }
 
-
-
   return (
-
     <div className="space-y-5">
+      <form
+        onSubmit={upload}
+        className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-5"
+      >
+        <label className="block space-y-2">
+          <span className="text-sm font-semibold text-zinc-200">
+            Observação
+          </span>
+          <input
+            type="text"
+            required
+            maxLength={160}
+            value={observation}
+            onChange={(event) => setObservation(event.target.value)}
+            placeholder="Ex.: ART Elétrica"
+            disabled={uploading}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500 disabled:opacity-60"
+          />
+        </label>
 
+        <label className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-zinc-700 p-6 text-zinc-400 hover:border-orange-500">
+          <Upload size={20} />
+          {selectedFile ? selectedFile.name : "Selecionar arquivo"}
+          <input
+            type="file"
+            required
+            accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt"
+            disabled={uploading}
+            onChange={(event) =>
+              setSelectedFile(event.target.files?.[0] ?? null)
+            }
+            className="hidden"
+          />
+        </label>
 
-      <label className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-zinc-700 p-8 text-zinc-400 hover:border-orange-500">
-
-        <Upload size={20}/>
-
-        Enviar arquivo
-
-
-        <input
-
-          type="file"
-
-          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt"
-
-          disabled={uploading}
-
-          onChange={upload}
-
-          className="hidden"
-
-        />
-
-
-      </label>
+        <button
+          type="submit"
+          disabled={
+            uploading ||
+            !selectedFile ||
+            observation.trim().length === 0
+          }
+          className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Upload size={18} />
+          {uploading ? "Enviando..." : "Enviar arquivo"}
+        </button>
+      </form>
 
       {fileMessage && (
-        <p className={fileMessage.includes("sucesso") ? "text-sm text-emerald-400" : "text-sm text-red-400"}>
+        <p
+          className={
+            fileMessage.includes("sucesso")
+              ? "text-sm text-emerald-400"
+              : "text-sm text-red-400"
+          }
+        >
           {fileMessage}
         </p>
       )}
 
-
-
       {(lead.files ?? []).length === 0 ? (
-
-        <EmptyState
-          text="Nenhum arquivo enviado."
-        />
-
-
+        <EmptyState text="Nenhum arquivo enviado." />
       ) : (
-
-
         <div className="space-y-3">
-
-
-          {(lead.files ?? []).map((file)=>(
-
-
-            <div key={file.id} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-              <a
-                href={`/api/leads/files?id=${encodeURIComponent(file.id)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="min-w-0 flex-1 truncate text-white hover:text-orange-400"
-              >
+          {(lead.files ?? []).map((file) => (
+            <article
+              key={file.id}
+              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+            >
+              <p className="font-semibold text-white">
+                📎 {file.observation || "Sem observação"}
+              </p>
+              <p className="mt-1 break-all text-sm text-zinc-400">
                 {file.name}
-              </a>
-              <button
-                type="button"
-                onClick={() => void removeFile(file.id)}
-                disabled={deletingId === file.id}
-                className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
-              >
-                {deletingId === file.id ? "Excluindo..." : "Excluir"}
-              </button>
-            </div>
-
-
+              </p>
+              <p className="mt-3 text-xs text-zinc-500">
+                {new Date(file.createdAt).toLocaleString("pt-BR")}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Enviado por: {file.uploadedBy?.name ?? "Não informado"}
+              </p>
+              <div className="mt-4 flex gap-2">
+                <a
+                  href={`/api/leads/files?id=${encodeURIComponent(file.id)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-orange-500"
+                >
+                  Baixar
+                </a>
+                <button
+                  type="button"
+                  onClick={() => void removeFile(file.id)}
+                  disabled={deletingId === file.id}
+                  className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                >
+                  {deletingId === file.id ? "Excluindo..." : "Excluir"}
+                </button>
+              </div>
+            </article>
           ))}
-
-
         </div>
-
-
       )}
-
-
     </div>
-
   );
-
 }
 
 

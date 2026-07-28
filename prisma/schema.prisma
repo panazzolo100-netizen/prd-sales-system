@@ -126,6 +126,8 @@ model User {
 
   projectDocuments ProjectDocument[]
 
+  uploadedLeadFiles LeadFile[]
+
   @@index([companyId, clientId])
   @@schema("crm")
 }
@@ -206,12 +208,19 @@ model LeadFile {
 
   size Int
 
+  observation String? @db.VarChar(160)
+
   createdAt DateTime @default(now())
 
   leadId String
 
   lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
+  uploadedById String?
+
+  uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([uploadedById])
   @@schema("crm")
 }
 

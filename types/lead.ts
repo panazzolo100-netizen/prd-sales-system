@@ -30,7 +30,11 @@ export type LeadFileItem = {
   accessUrl: string | null;
   mimeType: string;
   size: number;
+  observation: string | null;
   createdAt: Date;
+  uploadedBy: {
+    name: string;
+  } | null;
 };
 
 export type LeadProposalItem = {

@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const leadId = String(formData.get("leadId") ?? "").trim();
     const kind = String(formData.get("kind") ?? "").trim();
+    const observation = String(formData.get("observation") ?? "").trim();
     const file = formData.get("file");
     if (!leadId) {
       return NextResponse.json({ error: "ID do Lead é obrigatório." }, { status: 400 });
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       mimeType: file.type,
       size: file.size,
       buffer: Buffer.from(await file.arrayBuffer()),
+      observation,
       kind:
         kind === "PROPOSAL_INTERNAL" || kind === "PROPOSAL_CLIENT"
           ? kind

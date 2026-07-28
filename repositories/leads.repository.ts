@@ -46,6 +46,8 @@ export type CreateLeadFileData = {
   url: string;
   mimeType: string;
   size: number;
+  observation?: string | null;
+  uploadedById?: string | null;
 };
 
 export async function findLeadsByCompany(
@@ -149,6 +151,13 @@ export async function findLeadById(
         orderBy: {
           createdAt: "desc",
         },
+        include: {
+          uploadedBy: {
+            select: {
+              name: true,
+            },
+          },
+        },
       },
       engineering: true,
       client: true,
@@ -207,6 +216,13 @@ export async function createLeadFile(
 ) {
   return prisma.leadFile.create({
     data,
+    include: {
+      uploadedBy: {
+        select: {
+          name: true,
+        },
+      },
+    },
   });
 }
 
@@ -331,6 +347,13 @@ export async function createProjectFromLead(
 export async function findCompanyLeadFileById(id: string, companyId: string) {
   return prisma.leadFile.findFirst({
     where: { id, lead: { companyId } },
+    include: {
+      uploadedBy: {
+        select: {
+          name: true,
+        },
+      },
+    },
   });
 }
 
