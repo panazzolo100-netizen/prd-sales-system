@@ -42,11 +42,11 @@ export async function GET(
 export async function DELETE(request: Request, context: Context) {
   try {
     const { id } = await context.params;
-    const body = (await request.json()) as { confirmationName?: unknown };
-    const confirmationName =
-      typeof body.confirmationName === "string" ? body.confirmationName : "";
+    const body = (await request.json()) as { confirmationText?: unknown };
+    const confirmationText =
+      typeof body.confirmationText === "string" ? body.confirmationText : "";
 
-    const result = await deleteCompanyLead(id, confirmationName);
+    const result = await deleteCompanyLead(id, confirmationText);
     return NextResponse.json(result);
   } catch (error) {
     const access = accessErrorResponse(error);

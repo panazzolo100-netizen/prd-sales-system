@@ -228,7 +228,7 @@ export async function updateCompanyLead(
 
 export async function deleteCompanyLead(
   id: string,
-  confirmationName: string
+  confirmationText: string
 ) {
   const user = await requireRole("EXECUTIVO");
 
@@ -241,10 +241,8 @@ export async function deleteCompanyLead(
     throw new Error("Lead não encontrado.");
   }
 
-  if (confirmationName !== lead.companyName) {
-    throw new Error(
-      "O nome de confirmação não corresponde ao nome da oportunidade."
-    );
+  if (confirmationText !== "EXCLUIR") {
+    throw new Error("A confirmação de exclusão é inválida.");
   }
 
   const result = await deleteLead(

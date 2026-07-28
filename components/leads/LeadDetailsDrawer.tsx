@@ -225,11 +225,11 @@ export function LeadDetailsDrawer({
       {canDelete && (
         <section className="mx-8 mb-8 rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-600 dark:text-red-400">
-            Área de risco
+            Zona de risco
           </p>
           <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-              Exclui somente a oportunidade e seu card do Pipeline. O cadastro geral do cliente não será apagado.
+              Esta ação não poderá ser desfeita. O cadastro geral do cliente não será apagado.
             </p>
             <button
               type="button"
@@ -327,17 +327,22 @@ export function LeadDetailsDrawer({
             </div>
 
             <div className="mt-5 space-y-3 rounded-xl border border-red-500/15 bg-red-500/[0.04] p-4 text-sm text-zinc-700 dark:text-zinc-300">
-              <p><strong>Oportunidade:</strong> {lead.companyName}</p>
-              <p><strong>Empresa/cliente:</strong> {lead.companyName}</p>
-              <p>O card será removido do Pipeline e esta ação não poderá ser desfeita.</p>
-              <p className="font-semibold text-zinc-950 dark:text-zinc-100">
-                O cadastro geral do cliente não será apagado.
-              </p>
+              <p><strong>Nome da oportunidade:</strong> {lead.companyName}</p>
+              <p><strong>Empresa:</strong> {lead.companyName}</p>
+              <p><strong>Cliente:</strong> {lead.contactName}</p>
+              <p><strong>Valor estimado:</strong> {formatEstimatedValue(lead.estimatedValue)}</p>
+              <div className="space-y-2 pt-2 leading-6">
+                <p>Esta ação excluirá permanentemente esta oportunidade do Pipeline.</p>
+                <p className="font-semibold text-zinc-950 dark:text-zinc-100">
+                  O cadastro do cliente NÃO será removido.
+                </p>
+                <p>Esta ação não poderá ser desfeita.</p>
+              </div>
             </div>
 
             <label className="mt-5 block space-y-2">
               <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Digite <strong>{lead.companyName}</strong> para confirmar:
+                Digite <strong>EXCLUIR</strong> para confirmar:
               </span>
               <input
                 value={deleteConfirmation}
@@ -365,16 +370,16 @@ export function LeadDetailsDrawer({
               </button>
               <button
                 type="button"
-                disabled={deleting || deleteConfirmation !== lead.companyName}
+                disabled={deleting || deleteConfirmation !== "EXCLUIR"}
                 onClick={async () => {
-                  if (deleting || deleteConfirmation !== lead.companyName) return;
+                  if (deleting || deleteConfirmation !== "EXCLUIR") return;
                   setDeleting(true);
                   setDeleteError(null);
                   try {
                     const response = await fetch(`/api/leads/${lead.id}`, {
                       method: "DELETE",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ confirmationName: deleteConfirmation }),
+                      body: JSON.stringify({ confirmationText: deleteConfirmation }),
                     });
                     const payload = await response.json();
                     if (!response.ok) {
