@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { Upload, Plus } from "lucide-react";
 
 import { LeadDimensioning } from "@/components/leads/LeadDimensioning";
+import { LeadHistory } from "@/components/leads/LeadHistory";
 import type { ProposalExcelPreview } from "@/lib/proposal-excel";
 import type { LeadListItem } from "@/types/lead";
 import { inferLegacyServiceType, isSolarService, serviceTypeConfig, serviceTypeLabel, type OpportunityServiceType, type ServiceField } from "@/lib/opportunity-service-types";
 
 export type LeadTab =
   | "Resumo"
-  | "Timeline"
+  | "Histórico"
   | "Proposta"
   | "Engenharia"
   | "Dimensionamento"
@@ -19,7 +20,7 @@ export type LeadTab =
 
 const allTabs: LeadTab[] = [
   "Resumo",
-  "Timeline",
+  "Histórico",
   "Proposta",
   "Engenharia",
   "Dimensionamento",
@@ -122,10 +123,11 @@ export function LeadTabs({
           <OpportunitySummary lead={lead} resolvedType={resolvedType} />
         )}
 
-        {active === "Timeline" && (
-          <LeadTimeline
-            lead={lead}
-            showActivityAuthors={showActivityAuthors}
+        {active === "Histórico" && (
+          <LeadHistory
+            leadId={lead.id}
+            activities={lead.activities ?? []}
+            showAuthors={showActivityAuthors}
           />
         )}
 
@@ -744,123 +746,6 @@ function LeadEngineering({ lead }: Props) {
 
   );
 }
-function LeadTimeline({ lead, showActivityAuthors = false }: Props) {
-  const router = useRouter();
-
-  const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const activities = lead.activities ?? [];
-
-  async function createActivity() {
-    if (!title.trim()) {
-      alert("Informe o título.");
-      return;
-    }
-
-    setSaving(true);
-
-    const response = await fetch("/api/leads/activity", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        leadId: lead.id,
-        type: "MANUAL",
-        title,
-        notes,
-      }),
-    });
-
-    setSaving(false);
-
-    if (!response.ok) {
-      alert("Erro ao criar atividade.");
-      return;
-    }
-
-    setTitle("");
-    setNotes("");
-
-    router.refresh();
-  }
-
-  return (
-    <div className="space-y-6">
-
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
-
-        <h3 className="text-lg font-bold text-white">
-          Nova Atividade
-        </h3>
-
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Título"
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"
-        />
-
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Observações"
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-white"
-        />
-
-        <button
-          onClick={createActivity}
-          disabled={saving}
-          className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white"
-        >
-          {saving ? "Salvando..." : "Criar Atividade"}
-        </button>
-
-      </div>
-
-      {activities.length === 0 ? (
-        <EmptyState text="Nenhuma atividade registrada." />
-      ) : (
-        <div className="space-y-4">
-          {activities.map((activity) => (
-            <div
-              key={activity.id}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5"
-            >
-              <h3 className="font-bold text-white">
-                {showActivityAuthors && activity.user?.name
-                  ? `${activity.user.name.toLocaleUpperCase("pt-BR")} ${activity.title.charAt(0).toLocaleLowerCase("pt-BR")}${activity.title.slice(1)}`
-                  : activity.title}
-              </h3>
-
-              <p className="mt-2 text-sm text-zinc-400">
-                {activity.type} ·{" "}
-                {new Date(activity.createdAt).toLocaleString("pt-BR", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
-              </p>
-
-              {activity.notes && (
-                <p className="mt-3 text-zinc-300">
-                  {activity.notes}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-
-
-
-
 function LeadProposals({ lead, onLeadChange }: Props) {
   const [editing, setEditing] = useState(!lead.proposal);
   const [title,setTitle] = useState(lead.proposal?.title ?? "");

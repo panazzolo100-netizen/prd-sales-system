@@ -1212,7 +1212,7 @@ export function PipelineBoard({
                                               onClick={() =>
                                                 openLead(
                                                   lead.id,
-                                                  "Timeline"
+                                                  "Histórico"
                                                 )
                                               }
                                             />

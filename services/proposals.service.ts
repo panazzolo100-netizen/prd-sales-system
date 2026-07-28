@@ -19,7 +19,7 @@ import { assertStatusTransition } from "@/lib/kanban/status-transitions";
 import {
   findDimensioningByLead,
 } from "@/repositories/dimensioning.repository";
-import { findLeadById } from "@/repositories/leads.repository";
+import { createLeadActivity, findLeadById } from "@/repositories/leads.repository";
 
 async function assertLeadAccess(leadId: string) { if (!await findLeadById(leadId, await getCurrentCompanyId())) throw new Error("Lead não encontrado."); }
 
@@ -45,11 +45,36 @@ export async function saveProposal(
   leadId: string,
   data: UpdateProposalData
 ) {
-  await assertLeadAccess(leadId);
-  return upsertProposal(
+  const user = await requirePermission(PERMISSIONS.COMMERCIAL);
+  const lead = await findLeadById(leadId, user.companyId);
+  if (!lead) throw new Error("Lead não encontrado.");
+  const proposal = await upsertProposal(
     leadId,
     data
   );
+  await createLeadActivity({
+    leadId,
+    userId: user.id,
+    type: lead.proposal ? "PROPOSAL_UPDATED" : "PROPOSAL_CREATED",
+    title: lead.proposal ? "Proposta editada" : "Proposta criada",
+    notes: `${proposal.title} · ${new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(proposal.amount)}`,
+  });
+  if (data.amount !== undefined && data.amount !== lead.estimatedValue) {
+    await createLeadActivity({
+      leadId,
+      userId: user.id,
+      type: "ESTIMATED_VALUE_UPDATED",
+      title: "Valor estimado alterado",
+      notes: new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }).format(proposal.amount),
+    });
+  }
+  return proposal;
 }
 
 export async function generateProposal(
@@ -67,7 +92,7 @@ export async function generateProposal(
     );
   }
 
-  return upsertProposal(
+  return saveProposal(
     leadId,
     {
       title: "Proposta Solar",

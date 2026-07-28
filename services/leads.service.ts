@@ -370,5 +370,9 @@ export async function createCompanyLeadActivity(data: { leadId: string; type: st
   const user = await requirePermission(PERMISSIONS.COMMERCIAL);
   const lead = await findLeadById(data.leadId, user.companyId);
   if (!lead) throw new Error("Lead não encontrado.");
-  return createLeadActivity({ ...data, userId: user.id });
+  const activity = await createLeadActivity({ ...data, userId: user.id });
+  return {
+    ...activity,
+    user: user.role === "EXECUTIVO" ? { name: user.name } : undefined,
+  };
 }

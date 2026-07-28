@@ -172,9 +172,19 @@ export async function uploadCompanyLeadFile(data: {
 
   await createLeadActivity({
     leadId: data.leadId,
-    userId: lead.ownerId,
-    type: "FILE_UPLOADED",
-    title: "Arquivo enviado",
+    userId: user.id,
+    type:
+      data.kind === "PROPOSAL_INTERNAL"
+        ? "PROPOSAL_EXCEL_UPLOADED"
+        : data.kind === "PROPOSAL_CLIENT"
+          ? "PROPOSAL_PDF_UPLOADED"
+          : "FILE_UPLOADED",
+    title:
+      data.kind === "PROPOSAL_INTERNAL"
+        ? "Excel da proposta anexado"
+        : data.kind === "PROPOSAL_CLIENT"
+          ? "PDF da proposta anexado"
+          : "Arquivo anexado",
     notes: data.name,
   });
   return toLeadFileResponse(file, user.companyId);
@@ -219,7 +229,11 @@ export async function removeCompanyLeadFile(id: string) {
     leadId: file.leadId,
     userId: user.id,
     type: "FILE_DELETED",
-    title: "Arquivo removido",
+    title: file.mimeType.includes("spreadsheet") || file.mimeType.includes("excel")
+      ? "Excel da proposta removido"
+      : file.mimeType === "application/pdf"
+        ? "PDF da proposta removido"
+        : "Arquivo removido",
     notes: file.name,
   });
   return file;
