@@ -11,7 +11,11 @@ import {
 import { GlobalSearch } from "./GlobalSearch";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { MobileNav } from "@/components/layout/MobileNav";
-import type { AppRole } from "@/lib/auth/permissions";
+import {
+  type AppRole,
+  PERMISSIONS,
+  hasPermission,
+} from "@/lib/auth/permissions";
 import type { UserPresentation } from "@/lib/auth/user-presentation";
 
 const pageTitles: Record<
@@ -144,13 +148,15 @@ export function Topbar({
         <div className="flex flex-1 items-center justify-end gap-3">
           <GlobalSearch />
 
-          <Link
-            href="/agenda"
-            title="Abrir agenda"
-            className="hidden h-11 w-11 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-zinc-500 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-400 sm:flex"
-          >
-            <CalendarDays size={18} />
-          </Link>
+          {hasPermission(role, PERMISSIONS.AGENDA) && (
+            <Link
+              href="/agenda"
+              title="Abrir agenda"
+              className="hidden h-11 w-11 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-zinc-500 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-400 sm:flex"
+            >
+              <CalendarDays size={18} />
+            </Link>
+          )}
 
           <NotificationCenter />
 
