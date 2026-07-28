@@ -11,7 +11,6 @@ import {
   BarChart3,
   Calendar,
   CheckCircle2,
-  Clock3,
   DollarSign,
   ExternalLink,
   FileText,
@@ -23,7 +22,6 @@ import {
   Search,
   Snowflake,
   Sun,
-  Target,
   TrendingUp,
   UserRound,
   X,
@@ -33,6 +31,7 @@ import {
 import { LeadDetailsDrawer } from "@/components/leads/LeadDetailsDrawer";
 import type { LeadTab } from "@/components/leads/LeadTabs";
 import { LeadStatus } from "@/lib/generated/prisma/enums";
+import { calculatePipelineMetrics } from "@/lib/pipeline-metrics";
 import type { LeadListItem } from "@/types/lead";
 
 type PipelineLead = {
@@ -302,65 +301,10 @@ export function PipelineBoard({
     temperatureFilter,
   ]);
 
-  const metrics = useMemo(() => {
-    const totalLeads = leads.length;
-
-    const totalValue = leads.reduce(
-      (total, lead) =>
-        total +
-        (lead.estimatedValue ?? 0),
-      0
-    );
-
-    const ticketAverage =
-      totalLeads > 0
-        ? totalValue / totalLeads
-        : 0;
-
-    const wonLeads = leads.filter(
-      (lead) =>
-        lead.status === LeadStatus.GANHO
-    ).length;
-
-    const lostLeads = leads.filter(
-      (lead) =>
-        lead.status === LeadStatus.PERDIDO
-    ).length;
-
-    const closedLeads =
-      wonLeads + lostLeads;
-
-    const winRate =
-      closedLeads > 0
-        ? (wonLeads / closedLeads) * 100
-        : 0;
-
-    const totalStoppedDays =
-      leads.reduce((total, lead) => {
-        const referenceDate =
-          getLeadReferenceDate(lead);
-
-        return (
-          total +
-          getDaysSince(referenceDate)
-        );
-      }, 0);
-
-    const averageStoppedDays =
-      totalLeads > 0
-        ? Math.round(
-            totalStoppedDays / totalLeads
-          )
-        : 0;
-
-    return {
-      totalLeads,
-      totalValue,
-      ticketAverage,
-      winRate,
-      averageStoppedDays,
-    };
-  }, [leads]);
+  const metrics = useMemo(
+    () => calculatePipelineMetrics(leads),
+    [leads]
+  );
 
   const filteredValue = useMemo(() => {
     return filteredLeads.reduce(
@@ -707,19 +651,23 @@ export function PipelineBoard({
             />
 
             <MetricCard
-              icon={Target}
-              label="Taxa de ganho"
-              value={formatPercentage(
-                metrics.winRate
+              icon={CheckCircle2}
+              label="Valor ganho"
+              value={formatCurrency(
+                metrics.wonValue
               )}
-              description="Ganhos entre encerrados"
+              description="Total das oportunidades ganhas"
+              tone="success"
             />
 
             <MetricCard
-              icon={Clock3}
-              label="Tempo parado"
-              value={`${metrics.averageStoppedDays} dias`}
-              description="Média sem atualização"
+              icon={XCircle}
+              label="Valor perdido"
+              value={formatCurrency(
+                metrics.lostValue
+              )}
+              description="Total das oportunidades perdidas"
+              tone="danger"
             />
           </div>
         </div>
@@ -1348,12 +1296,20 @@ export function PipelineBoard({
         showInternalNotes
         showActivityAuthors={canArchive}
         canArchive={canArchive}
+        canDelete={canArchive}
         onArchived={(leadId) => {
           setLeads((current) =>
             current.filter((lead) => lead.id !== leadId)
           );
           setSelectedLead(null);
           showToast("success", "Oportunidade arquivada com sucesso.");
+        }}
+        onDeleted={(leadId) => {
+          setLeads((current) =>
+            current.filter((lead) => lead.id !== leadId)
+          );
+          setSelectedLead(null);
+          showToast("success", "Oportunidade excluída com sucesso.");
         }}
         onLeadChange={handleLeadChange}
         onClose={() => {
@@ -1374,6 +1330,7 @@ type MetricCardProps = {
   value: string;
   description: string;
   highlight?: boolean;
+  tone?: "default" | "success" | "danger";
 };
 
 function MetricCard({
@@ -1382,14 +1339,36 @@ function MetricCard({
   value,
   description,
   highlight = false,
+  tone = "default",
 }: MetricCardProps) {
+  const cardClass =
+    tone === "success"
+      ? "border-emerald-500/25 bg-emerald-500/[0.07] hover:border-emerald-500/35"
+      : tone === "danger"
+        ? "border-red-500/25 bg-red-500/[0.07] hover:border-red-500/35"
+        : highlight
+          ? "border-orange-500/20 bg-orange-500/[0.06]"
+          : "border-white/[0.07] bg-zinc-950";
+  const iconClass =
+    tone === "success"
+      ? "bg-emerald-500/15 text-emerald-400"
+      : tone === "danger"
+        ? "bg-red-500/15 text-red-400"
+        : highlight
+          ? "bg-orange-500/15 text-orange-400"
+          : "bg-zinc-900 text-zinc-500";
+  const valueClass =
+    tone === "success"
+      ? "text-emerald-400"
+      : tone === "danger"
+        ? "text-red-400"
+        : highlight
+          ? "text-orange-400"
+          : "text-white";
+
   return (
     <div
-      className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 ${
-        highlight
-          ? "border-orange-500/20 bg-orange-500/[0.06]"
-          : "border-white/[0.07] bg-zinc-950"
-      }`}
+      className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 ${cardClass}`}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -1397,22 +1376,14 @@ function MetricCard({
         </p>
 
         <div
-          className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-            highlight
-              ? "bg-orange-500/15 text-orange-400"
-              : "bg-zinc-900 text-zinc-500"
-          }`}
+          className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconClass}`}
         >
           <Icon size={17} />
         </div>
       </div>
 
       <p
-        className={`mt-3 truncate text-2xl font-black ${
-          highlight
-            ? "text-orange-400"
-            : "text-white"
-        }`}
+        className={`mt-3 truncate text-2xl font-black ${valueClass}`}
       >
         {value}
       </p>

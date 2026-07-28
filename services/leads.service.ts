@@ -227,35 +227,55 @@ export async function updateCompanyLead(
 }
 
 export async function deleteCompanyLead(
-  id: string
+  id: string,
+  confirmationName: string
 ) {
-  const companyId =
-    await getCurrentCompanyId();
+  const user = await requireRole("EXECUTIVO");
 
   const lead = await findLeadById(
     id,
-    companyId
+    user.companyId
   );
 
   if (!lead) {
     throw new Error("Lead não encontrado.");
   }
 
-  const dependencies = [
-    lead.proposal ? "proposta" : null,
-    lead.client ? "cliente" : null,
-  ].filter(Boolean);
-
-  if (dependencies.length > 0) {
+  if (confirmationName !== lead.companyName) {
     throw new Error(
-      `Esta oportunidade possui ${dependencies.join(" e ")} vinculado(s). Remova ou cancele esses vínculos antes de excluir.`
+      "O nome de confirmação não corresponde ao nome da oportunidade."
     );
   }
 
-  return deleteLead(
+  const result = await deleteLead(
     id,
-    companyId
+    user.companyId
   );
+
+  if (result.kind === "not-found") {
+    throw new Error("Lead não encontrado.");
+  }
+  if (result.kind === "blocked") {
+    throw new Error(
+      `A oportunidade não pode ser excluída porque possui ${result.blockers.join(
+        ", "
+      )}. Os dados vinculados foram preservados.`
+    );
+  }
+
+  const { cleanupDeletedLeadFiles } = await import(
+    "@/services/leads.files.service"
+  );
+  const cleanupWarnings = await cleanupDeletedLeadFiles(
+    result.files,
+    user.companyId
+  );
+
+  return {
+    id: result.leadId,
+    preservedClientId: result.preservedClientId,
+    cleanupWarnings,
+  };
 }
 
 export async function archiveCompanyLead(id: string) {

@@ -385,6 +385,57 @@ export async function deleteLead(
   companyId: string
 ) {
   return prisma.$transaction(async (transaction) => {
+    const lead = await transaction.lead.findFirst({
+      where: { id, companyId },
+      select: {
+        id: true,
+        companyName: true,
+        proposal: { select: { id: true } },
+        files: {
+          select: {
+            id: true,
+            name: true,
+            url: true,
+            mimeType: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            projects: {
+              select: {
+                id: true,
+                serviceOrder: { select: { id: true } },
+                documents: { select: { id: true }, take: 1 },
+                financial: { select: { id: true } },
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    if (!lead) {
+      return { kind: "not-found" as const };
+    }
+
+    const project = lead.client?.projects[0];
+    const blockers = [
+      lead.proposal ? "proposta vinculada" : null,
+      project?.serviceOrder ? "ordem de serviço vinculada" : null,
+      project?.documents.length ? "documentos de projeto vinculados" : null,
+      project?.financial ? "registro financeiro vinculado" : null,
+      project ? "projeto convertido" : null,
+    ].filter((value): value is string => Boolean(value));
+
+    if (blockers.length > 0) {
+      return {
+        kind: "blocked" as const,
+        blockers: [...new Set(blockers)],
+      };
+    }
+
     await transaction.activity.deleteMany({
       where: {
         leadId: id,
@@ -394,11 +445,26 @@ export async function deleteLead(
       },
     });
 
-    return transaction.lead.delete({
+    if (lead.client) {
+      await transaction.client.update({
+        where: { id: lead.client.id },
+        data: { leadId: null },
+      });
+    }
+
+    await transaction.lead.delete({
       where: {
         id,
         companyId,
       },
     });
+
+    return {
+      kind: "deleted" as const,
+      leadId: lead.id,
+      companyName: lead.companyName,
+      files: lead.files,
+      preservedClientId: lead.client?.id ?? null,
+    };
   });
 }

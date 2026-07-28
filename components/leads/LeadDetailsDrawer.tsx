@@ -5,7 +5,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Pencil, X } from "lucide-react";
+import { Archive, Pencil, Trash2, X } from "lucide-react";
 import { OPPORTUNITY_SERVICE_TYPES, inferLegacyServiceType, serviceTypeConfig, serviceTypeLabel, type OpportunityServiceType, type ServiceField } from "@/lib/opportunity-service-types";
 
 import { LeadStageBar } from "@/components/leads/LeadStageBar";
@@ -26,8 +26,10 @@ type Props = {
   showInternalNotes?: boolean;
   showActivityAuthors?: boolean;
   canArchive?: boolean;
+  canDelete?: boolean;
   onClose: () => void;
   onArchived?: (leadId: string) => void;
+  onDeleted?: (leadId: string) => void;
   onLeadChange?: (lead: LeadListItem) => void;
 
   onStatusChange?: (
@@ -86,8 +88,10 @@ export function LeadDetailsDrawer({
   showInternalNotes = false,
   showActivityAuthors = false,
   canArchive = false,
+  canDelete = false,
   onClose,
   onArchived,
+  onDeleted,
   onLeadChange,
   onStatusChange,
 }: Props) {
@@ -95,6 +99,10 @@ export function LeadDetailsDrawer({
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
   const [
@@ -214,6 +222,30 @@ export function LeadDetailsDrawer({
         showActivityAuthors={showActivityAuthors}
         onLeadChange={onLeadChange}
       />
+      {canDelete && (
+        <section className="mx-8 mb-8 rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-600 dark:text-red-400">
+            Área de risco
+          </p>
+          <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+              Exclui somente a oportunidade e seu card do Pipeline. O cadastro geral do cliente não será apagado.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteConfirmation("");
+                setDeleteError(null);
+                setDeleteOpen(true);
+              }}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-500/20 dark:text-red-300"
+            >
+              <Trash2 size={16} />
+              Excluir oportunidade
+            </button>
+          </div>
+        </section>
+      )}
       {archiveOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div role="dialog" aria-modal="true" aria-labelledby="archive-opportunity-title" className="w-full max-w-lg rounded-2xl border border-amber-500/20 bg-white p-6 shadow-2xl dark:bg-zinc-950">
@@ -261,6 +293,110 @@ export function LeadDetailsDrawer({
               >
                 <Archive size={16} />
                 {archiving ? "Arquivando..." : "Confirmar arquivamento"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-[125] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-opportunity-title"
+            className="w-full max-w-lg rounded-2xl border border-red-500/20 bg-white p-6 shadow-2xl dark:bg-zinc-950"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-600 dark:text-red-400">
+                  Exclusão definitiva
+                </p>
+                <h2 id="delete-opportunity-title" className="mt-2 text-xl font-bold text-zinc-950 dark:text-zinc-100">
+                  Excluir oportunidade?
+                </h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Fechar"
+                disabled={deleting}
+                onClick={() => setDeleteOpen(false)}
+                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-white/5"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3 rounded-xl border border-red-500/15 bg-red-500/[0.04] p-4 text-sm text-zinc-700 dark:text-zinc-300">
+              <p><strong>Oportunidade:</strong> {lead.companyName}</p>
+              <p><strong>Empresa/cliente:</strong> {lead.companyName}</p>
+              <p>O card será removido do Pipeline e esta ação não poderá ser desfeita.</p>
+              <p className="font-semibold text-zinc-950 dark:text-zinc-100">
+                O cadastro geral do cliente não será apagado.
+              </p>
+            </div>
+
+            <label className="mt-5 block space-y-2">
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Digite <strong>{lead.companyName}</strong> para confirmar:
+              </span>
+              <input
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                disabled={deleting}
+                autoComplete="off"
+                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-950 outline-none focus:border-red-500 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+              />
+            </label>
+
+            {deleteError && (
+              <p className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-300">
+                {deleteError}
+              </p>
+            )}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeleteOpen(false)}
+                className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-bold text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/5"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deleting || deleteConfirmation !== lead.companyName}
+                onClick={async () => {
+                  if (deleting || deleteConfirmation !== lead.companyName) return;
+                  setDeleting(true);
+                  setDeleteError(null);
+                  try {
+                    const response = await fetch(`/api/leads/${lead.id}`, {
+                      method: "DELETE",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ confirmationName: deleteConfirmation }),
+                    });
+                    const payload = await response.json();
+                    if (!response.ok) {
+                      throw new Error(payload.error ?? "Não foi possível excluir a oportunidade.");
+                    }
+                    setDeleteOpen(false);
+                    onDeleted?.(lead.id);
+                    onClose();
+                  } catch (error) {
+                    setDeleteError(
+                      error instanceof Error
+                        ? error.message
+                        : "Não foi possível excluir a oportunidade."
+                    );
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 size={16} />
+                {deleting ? "Excluindo..." : "Excluir definitivamente"}
               </button>
             </div>
           </div>

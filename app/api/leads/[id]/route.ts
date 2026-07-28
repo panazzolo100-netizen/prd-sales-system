@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getCompanyLeadById } from "@/services/leads.service";
+import { accessErrorResponse } from "@/lib/api/access-response";
+import {
+  deleteCompanyLead,
+  getCompanyLeadById,
+} from "@/services/leads.service";
 
 type Context = {
   params: Promise<{
@@ -35,10 +39,28 @@ export async function GET(
   }
 }
 
-export async function DELETE(_request: Request, context: Context) {
-  await context.params;
-  return NextResponse.json(
-    { error: "A exclusão física de oportunidades não é permitida. Use o arquivamento." },
-    { status: 405, headers: { Allow: "GET" } }
-  );
+export async function DELETE(request: Request, context: Context) {
+  try {
+    const { id } = await context.params;
+    const body = (await request.json()) as { confirmationName?: unknown };
+    const confirmationName =
+      typeof body.confirmationName === "string" ? body.confirmationName : "";
+
+    const result = await deleteCompanyLead(id, confirmationName);
+    return NextResponse.json(result);
+  } catch (error) {
+    const access = accessErrorResponse(error);
+    if (access) return access;
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Não foi possível excluir a oportunidade.";
+    const status = message.includes("não encontrado")
+      ? 404
+      : message.includes("não pode ser excluída")
+        ? 409
+        : 400;
+    return NextResponse.json({ error: message }, { status });
+  }
 }

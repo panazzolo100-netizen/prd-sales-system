@@ -205,6 +205,46 @@ async function removeLegacyLeadFile(url: string) {
   }
 }
 
+export async function cleanupDeletedLeadFiles(
+  files: Array<{ id: string; name: string; url: string; mimeType: string }>,
+  companyId: string
+) {
+  const warnings: string[] = [];
+
+  for (const file of files) {
+    const location = parseStoredFileLocation(file.url);
+    try {
+      if (location.type === "supabase") {
+        await deletePrivateFile({
+          companyId,
+          referenceOrPath: file.url,
+        });
+      } else if (location.type === "legacy-local") {
+        await removeLegacyLeadFile(file.url);
+      } else if (location.type === "invalid") {
+        warnings.push(`${file.name}: referência de storage inválida.`);
+      }
+      // Arquivos externos não são removidos: podem ser compartilhados por outro registro.
+    } catch (error) {
+      if (
+        error instanceof PrivateStorageError &&
+        error.code === "FILE_NOT_FOUND"
+      ) {
+        continue;
+      }
+      console.error("Falha ao limpar arquivo físico de Lead excluído.", {
+        leadFileId: file.id,
+        companyId,
+        storageCode:
+          error instanceof PrivateStorageError ? error.code : "UNKNOWN",
+      });
+      warnings.push(`${file.name}: não foi possível remover o arquivo físico.`);
+    }
+  }
+
+  return warnings;
+}
+
 export async function removeCompanyLeadFile(id: string) {
   const user = await getCurrentAppUser();
   const file = await findCompanyLeadFileById(id, user.companyId);
