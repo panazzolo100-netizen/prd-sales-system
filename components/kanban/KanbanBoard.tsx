@@ -151,7 +151,12 @@ export function KanbanBoard({ eyebrow, title, description, items: initialItems, 
       </section>
 
       <div className="max-w-full overflow-x-auto overscroll-x-contain pb-3 [scroll-snap-type:x_proximity]">
-        <div className="grid min-w-max grid-flow-col auto-cols-[minmax(280px,320px)] gap-4">
+        <div
+          className="grid w-full gap-4"
+          style={{
+            gridTemplateColumns: `repeat(${columns.length}, minmax(280px, 1fr))`,
+          }}
+        >
           {columns.map((column) => {
             const cards = visible.filter((item) => column.statuses.includes(item.status));
             const active = dragOver === column.id;

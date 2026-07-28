@@ -42,9 +42,11 @@ type PipelineLead = {
   estimatedValue: number | null;
   notes: string | null;
   status: LeadStatus;
+  createdAt: Date | string;
   updatedAt: Date | string;
 
   owner: {
+    id: string;
     name: string;
   } | null;
 
@@ -63,11 +65,135 @@ type ToastMessage = {
   message: string;
 } | null;
 
-type TemperatureFilter =
+type PeriodFilter =
   | "TODOS"
-  | "QUENTE"
-  | "MORNO"
-  | "FRIO";
+  | "ESTA_SEMANA"
+  | "ESTE_MES"
+  | "MES_PASSADO"
+  | "ULTIMOS_30_DIAS"
+  | "ULTIMOS_90_DIAS"
+  | "ESTE_ANO";
+
+function startOfDay(value: Date) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function endOfDay(value: Date) {
+  const date = new Date(value);
+  date.setHours(23, 59, 59, 999);
+  return date;
+}
+
+function getPeriodRange(period: PeriodFilter) {
+  const now = new Date();
+
+  if (period === "TODOS") {
+    return null;
+  }
+
+  if (period === "ESTA_SEMANA") {
+    const day = now.getDay();
+    const daysSinceMonday = day === 0 ? 6 : day - 1;
+    const start = startOfDay(now);
+    start.setDate(start.getDate() - daysSinceMonday);
+
+    return {
+      start,
+      end: endOfDay(now),
+    };
+  }
+
+  if (period === "ESTE_MES") {
+    return {
+      start: new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1,
+        0,
+        0,
+        0,
+        0
+      ),
+      end: endOfDay(now),
+    };
+  }
+
+  if (period === "MES_PASSADO") {
+    return {
+      start: new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        1,
+        0,
+        0,
+        0,
+        0
+      ),
+      end: new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        0,
+        23,
+        59,
+        59,
+        999
+      ),
+    };
+  }
+
+  if (period === "ULTIMOS_30_DIAS") {
+    const start = startOfDay(now);
+    start.setDate(start.getDate() - 29);
+
+    return {
+      start,
+      end: endOfDay(now),
+    };
+  }
+
+  if (period === "ULTIMOS_90_DIAS") {
+    const start = startOfDay(now);
+    start.setDate(start.getDate() - 89);
+
+    return {
+      start,
+      end: endOfDay(now),
+    };
+  }
+
+  return {
+    start: new Date(
+      now.getFullYear(),
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+    ),
+    end: endOfDay(now),
+  };
+}
+
+function matchesPeriod(
+  value: Date | string,
+  period: PeriodFilter
+) {
+  const range = getPeriodRange(period);
+
+  if (!range) {
+    return true;
+  }
+
+  const date = new Date(value);
+
+  return (
+    date.getTime() >= range.start.getTime() &&
+    date.getTime() <= range.end.getTime()
+  );
+}
 
 const etapas = PIPELINE_STAGES;
 
@@ -175,11 +301,8 @@ export function PipelineBoard({
   const [ownerFilter, setOwnerFilter] =
     useState("TODOS");
 
-  const [
-    temperatureFilter,
-    setTemperatureFilter,
-  ] =
-    useState<TemperatureFilter>("TODOS");
+  const [periodFilter, setPeriodFilter] =
+    useState<PeriodFilter>("TODOS");
 
   const [draggedLeadId, setDraggedLeadId] =
     useState<string | null>(null);
@@ -208,18 +331,33 @@ export function PipelineBoard({
   const didDrag = useRef(false);
 
   const owners = useMemo(() => {
-    const names = leads
-      .map((lead) => lead.owner?.name)
-      .filter(
-        (name): name is string =>
-          Boolean(name)
-      );
+    const ownersById = new Map<
+      string,
+      string
+    >();
+
+    leads.forEach((lead) => {
+      if (lead.owner) {
+        ownersById.set(
+          lead.owner.id,
+          lead.owner.name
+        );
+      }
+    });
 
     return Array.from(
-      new Set(names)
-    ).sort((a, b) =>
-      a.localeCompare(b, "pt-BR")
-    );
+      ownersById.entries()
+    )
+      .map(([id, name]) => ({
+        id,
+        name,
+      }))
+      .sort((a, b) =>
+        a.name.localeCompare(
+          b.name,
+          "pt-BR"
+        )
+      );
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
@@ -238,44 +376,39 @@ export function PipelineBoard({
           .toLocaleLowerCase("pt-BR")
           .includes(normalizedSearch);
 
-      const leadOwner =
-        lead.owner?.name ??
+      const leadOwnerId =
+        lead.owner?.id ??
         "SEM_RESPONSAVEL";
 
       const matchesOwner =
         ownerFilter === "TODOS" ||
-        ownerFilter === leadOwner;
+        ownerFilter === leadOwnerId;
 
-      const referenceDate =
-        getLeadReferenceDate(lead);
-
-      const stoppedDays =
-        getDaysSince(referenceDate);
-
-      const temperature =
-        getLeadTemperature(stoppedDays);
-
-      const matchesTemperature =
-        temperatureFilter === "TODOS" ||
-        temperatureFilter ===
-          temperature.key;
+      const matchesSelectedPeriod =
+        matchesPeriod(
+          lead.createdAt,
+          periodFilter
+        );
 
       return (
         matchesSearch &&
         matchesOwner &&
-        matchesTemperature
+        matchesSelectedPeriod
       );
     });
   }, [
     leads,
     ownerFilter,
     searchTerm,
-    temperatureFilter,
+    periodFilter,
   ]);
 
   const metrics = useMemo(
-    () => calculatePipelineMetrics(leads),
-    [leads]
+    () =>
+      calculatePipelineMetrics(
+        filteredLeads
+      ),
+    [filteredLeads]
   );
 
   const filteredValue = useMemo(() => {
@@ -290,12 +423,12 @@ export function PipelineBoard({
   const hasActiveFilters =
     searchTerm.trim().length > 0 ||
     ownerFilter !== "TODOS" ||
-    temperatureFilter !== "TODOS";
+    periodFilter !== "TODOS";
 
   function clearFilters() {
     setSearchTerm("");
     setOwnerFilter("TODOS");
-    setTemperatureFilter("TODOS");
+    setPeriodFilter("TODOS");
   }
 
   function showToast(
@@ -703,41 +836,60 @@ export function PipelineBoard({
 
                 {owners.map((owner) => (
                   <option
-                    key={owner}
-                    value={owner}
+                    key={owner.id}
+                    value={owner.id}
                   >
-                    {owner}
+                    {owner.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            <select
-              value={temperatureFilter}
-              onChange={(event) =>
-                setTemperatureFilter(
-                  event.target
-                    .value as TemperatureFilter
-                )
-              }
-              className="h-12 w-full rounded-xl border border-white/[0.07] bg-zinc-950 px-4 text-sm text-white outline-none transition focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/5"
-            >
-              <option value="TODOS">
-                Todas as temperaturas
-              </option>
+            <div className="relative">
+              <Calendar
+                size={17}
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+              />
 
-              <option value="QUENTE">
-                Quentes
-              </option>
+              <select
+                value={periodFilter}
+                onChange={(event) =>
+                  setPeriodFilter(
+                    event.target
+                      .value as PeriodFilter
+                  )
+                }
+                className="h-12 w-full appearance-none rounded-xl border border-white/[0.07] bg-zinc-950 pl-11 pr-4 text-sm text-white outline-none transition focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/5"
+              >
+                <option value="TODOS">
+                  Todo o período
+                </option>
 
-              <option value="MORNO">
-                Mornos
-              </option>
+                <option value="ESTA_SEMANA">
+                  Esta semana
+                </option>
 
-              <option value="FRIO">
-                Frios
-              </option>
-            </select>
+                <option value="ESTE_MES">
+                  Este mês
+                </option>
+
+                <option value="MES_PASSADO">
+                  Mês passado
+                </option>
+
+                <option value="ULTIMOS_30_DIAS">
+                  Últimos 30 dias
+                </option>
+
+                <option value="ULTIMOS_90_DIAS">
+                  Últimos 90 dias
+                </option>
+
+                <option value="ESTE_ANO">
+                  Este ano
+                </option>
+              </select>
+            </div>
 
             <button
               type="button"
