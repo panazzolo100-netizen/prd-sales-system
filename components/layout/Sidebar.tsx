@@ -26,7 +26,6 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/client";
 import { CompanyLogo } from "@/components/layout/CompanyLogo";
 import {
   type AppRole,
@@ -35,6 +34,7 @@ import {
   canAccessModule,
 } from "@/lib/auth/permissions";
 import type { UserPresentation } from "@/lib/auth/user-presentation";
+import { createClient } from "@/lib/supabase/client";
 
 const grupos = [
   {
@@ -213,17 +213,17 @@ export function Sidebar({
 
   return (
     <aside
-      className={`prd-sidebar sticky top-0 hidden h-screen shrink-0 flex-col border-r border-white/[0.06] bg-[#0b0b0d] transition-all duration-300 lg:flex ${
+      className={`prd-sidebar sticky top-0 hidden h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition-all duration-300 lg:flex ${
         collapsed ? "w-[88px]" : "w-72"
       }`}
     >
-      <div className="border-b border-white/[0.05] p-4">
+      <div className="border-b border-[var(--border)] p-4">
         <div
-          className={`relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.025] ${
+          className={`relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] ${
             collapsed ? "p-2" : "p-4"
           }`}
         >
-          <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-orange-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-orange-500/10 blur-3xl" />
 
           {collapsed ? (
             <button
@@ -232,7 +232,7 @@ export function Sidebar({
                 setCollapsed(false)
               }
               title="Expandir menu"
-              className="relative flex h-12 w-full items-center justify-center rounded-xl transition hover:bg-white/[0.05]"
+              className="relative flex h-12 w-full items-center justify-center rounded-xl transition hover:bg-orange-500/10"
             >
               <CompanyLogo collapsed />
             </button>
@@ -252,18 +252,18 @@ export function Sidebar({
                     setCollapsed(true)
                   }
                   title="Recolher menu"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white/[0.06] hover:text-white"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] transition hover:bg-orange-500/10 hover:text-[var(--foreground)]"
                 >
                   <PanelLeftClose size={18} />
                 </button>
               </div>
 
-              <div className="mt-3 border-t border-white/[0.05] pt-3">
-                <p className="text-xs font-semibold text-zinc-400">
+              <div className="mt-3 border-t border-[var(--border)] pt-3">
+                <p className="text-xs font-semibold text-[var(--foreground)]">
                   Sistema integrado de gestão
                 </p>
 
-                <p className="mt-1 text-[11px] text-zinc-600">
+                <p className="mt-1 text-[11px] text-[var(--muted)]">
                   Engenharia, energia e obras
                 </p>
               </div>
@@ -278,7 +278,7 @@ export function Sidebar({
               setCollapsed(false)
             }
             title="Expandir menu"
-            className="mt-3 flex h-10 w-full items-center justify-center rounded-xl text-zinc-500 transition hover:bg-white/[0.05] hover:text-white"
+            className="mt-3 flex h-10 w-full items-center justify-center rounded-xl text-[var(--muted)] transition hover:bg-orange-500/10 hover:text-[var(--foreground)]"
           >
             <PanelLeftOpen size={19} />
           </button>
@@ -287,126 +287,133 @@ export function Sidebar({
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
         {grupos.map((grupo) => {
-          const allowedItems = grupo.itens.filter((item) =>
-            canAccessModule(role, item.permission as Permission)
+          const allowedItems = grupo.itens.filter(
+            (item) =>
+              canAccessModule(
+                role,
+                item.permission as Permission
+              )
           );
-          if (allowedItems.length === 0) return null;
+
+          if (allowedItems.length === 0) {
+            return null;
+          }
+
           return (
-          <div
-            key={
-              grupo.titulo || "principal"
-            }
-          >
-            {grupo.titulo &&
-              !collapsed && (
-                <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600">
-                  {grupo.titulo}
-                </p>
-              )}
+            <div
+              key={
+                grupo.titulo || "principal"
+              }
+            >
+              {grupo.titulo &&
+                !collapsed && (
+                  <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--muted)]">
+                    {grupo.titulo}
+                  </p>
+                )}
 
-            {grupo.titulo &&
-              collapsed && (
-                <div className="mx-auto mb-3 h-px w-8 bg-zinc-800" />
-              )}
+              {grupo.titulo &&
+                collapsed && (
+                  <div className="mx-auto mb-3 h-px w-8 bg-[var(--border)]" />
+                )}
 
-            <div className="space-y-1">
-              {allowedItems.map((item) => {
-                const Icon = item.icon;
+              <div className="space-y-1">
+                {allowedItems.map((item) => {
+                  const Icon = item.icon;
+                  const ativo =
+                    activeRoute === item.rota;
 
-                const ativo =
-                  activeRoute === item.rota;
+                  return (
+                    <Link
+                      key={item.rota}
+                      href={item.rota}
+                      title={
+                        collapsed
+                          ? item.nome
+                          : undefined
+                      }
+                      className={`group relative flex h-12 items-center rounded-xl transition-all duration-200 ${
+                        collapsed
+                          ? "justify-center px-3"
+                          : "justify-between px-3"
+                      } ${
+                        ativo
+                          ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
+                          : "text-[var(--muted)] hover:bg-orange-500/10 hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {ativo && (
+                        <span className="absolute -left-3 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-orange-500" />
+                      )}
 
-                return (
-                  <Link
-                    key={item.rota}
-                    href={item.rota}
-                    title={
-                      collapsed
-                        ? item.nome
-                        : undefined
-                    }
-                    className={`group relative flex h-12 items-center rounded-xl transition-all duration-200 ${
-                      collapsed
-                        ? "justify-center px-3"
-                        : "justify-between px-3"
-                    } ${
-                      ativo
-                        ? "prd-nav-active bg-orange-500 text-white shadow-lg shadow-orange-500/15"
-                        : "text-zinc-500 hover:bg-white/[0.045] hover:text-zinc-100"
-                    }`}
-                  >
-                    {ativo && (
-                      <span className="absolute -left-3 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-orange-400" />
-                    )}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
+                            ativo
+                              ? "bg-white/15"
+                              : "group-hover:bg-orange-500/10"
+                          }`}
+                        >
+                          <Icon
+                            size={18}
+                            strokeWidth={
+                              ativo ? 2.4 : 2
+                            }
+                          />
+                        </div>
 
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
-                          ativo
-                            ? "bg-white/15"
-                            : "group-hover:bg-white/[0.05]"
-                        }`}
-                      >
-                        <Icon
-                          size={18}
-                          strokeWidth={
-                            ativo ? 2.4 : 2
-                          }
-                        />
+                        {!collapsed && (
+                          <span className="truncate text-sm font-semibold">
+                            {item.nome}
+                          </span>
+                        )}
                       </div>
 
                       {!collapsed && (
-                        <span className="truncate text-sm font-semibold">
-                          {item.nome}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {item.badge && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                ativo
+                                  ? "bg-white/20 text-white"
+                                  : "bg-orange-500/10 text-orange-500"
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+
+                          {ativo && (
+                            <ChevronRight
+                              size={15}
+                              className="text-white/80"
+                            />
+                          )}
+                        </div>
                       )}
-                    </div>
-
-                    {!collapsed && (
-                      <div className="flex items-center gap-2">
-                        {item.badge && (
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                              ativo
-                                ? "bg-white/20 text-white"
-                                : "bg-orange-500/10 text-orange-400"
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-
-                        {ativo && (
-                          <ChevronRight
-                            size={15}
-                            className="text-white/80"
-                          />
-                        )}
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
           );
         })}
       </nav>
 
-      <div className="border-t border-white/[0.05] p-3">
+      <div className="border-t border-[var(--border)] p-3">
         {!collapsed && (
-          <div className="mb-3 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
+          <div className="mb-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-sm font-black text-white shadow-lg shadow-orange-500/10">
                 {user.initials}
               </div>
 
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-white">
+                <p className="truncate text-sm font-bold text-[var(--foreground)]">
                   {user.displayName}
                 </p>
 
-                <p className="truncate text-xs text-zinc-500">
+                <p className="truncate text-xs text-[var(--muted)]">
                   {user.roleLabel}
                 </p>
               </div>
@@ -423,7 +430,7 @@ export function Sidebar({
               ? "Sair do sistema"
               : undefined
           }
-          className={`flex h-11 w-full items-center rounded-xl text-sm font-semibold text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`flex h-11 w-full items-center rounded-xl text-sm font-semibold text-[var(--muted)] transition hover:bg-red-500/10 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 ${
             collapsed
               ? "justify-center"
               : "gap-3 px-3"
@@ -441,7 +448,7 @@ export function Sidebar({
         </button>
 
         {!collapsed && (
-          <p className="mt-3 text-center text-[10px] uppercase tracking-[0.18em] text-zinc-700">
+          <p className="mt-3 text-center text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
             PRD ERP • Versão interna
           </p>
         )}

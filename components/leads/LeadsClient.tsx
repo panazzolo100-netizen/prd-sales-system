@@ -1,27 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-
-import type { LeadListItem } from "@/types/lead";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import { LeadsFilters } from "@/components/leads/LeadsFilters";
 import { LeadsGrid } from "@/components/leads/LeadsGrid";
 import { LeadsHeader } from "@/components/leads/LeadsHeader";
-const LeadDetailsDrawer = dynamic(() => import("@/components/leads/LeadDetailsDrawer").then((module) => module.LeadDetailsDrawer));
-const NewLeadDrawer = dynamic(() => import("@/components/leads/NewLeadDrawer").then((module) => module.NewLeadDrawer));
+import type { LeadListItem } from "@/types/lead";
+
+const LeadDetailsDrawer = dynamic(() =>
+  import("@/components/leads/LeadDetailsDrawer").then(
+    (module) => module.LeadDetailsDrawer
+  )
+);
+
+const NewLeadDrawer = dynamic(() =>
+  import("@/components/leads/NewLeadDrawer").then(
+    (module) => module.NewLeadDrawer
+  )
+);
 
 type LeadsClientProps = {
   leads: LeadListItem[];
 };
 
-export function LeadsClient({
-  leads,
-}: LeadsClientProps) {
+export function LeadsClient({ leads }: LeadsClientProps) {
   const router = useRouter();
+
   const [currentLeads, setCurrentLeads] =
-    useState(leads);
+    useState<LeadListItem[]>(leads);
 
   const [newDrawerOpen, setNewDrawerOpen] =
     useState(false);
@@ -70,8 +78,11 @@ export function LeadsClient({
     setCurrentLeads(leads);
   }, [leads]);
 
-  function handleLeadChange(updatedLead: LeadListItem) {
+  function handleLeadChange(
+    updatedLead: LeadListItem
+  ) {
     setSelectedLead(updatedLead);
+
     setCurrentLeads((current) =>
       current.map((lead) =>
         lead.id === updatedLead.id
@@ -93,7 +104,7 @@ export function LeadsClient({
       );
 
       if (!response.ok) {
-        alert("Erro ao carregar lead.");
+        alert("Erro ao carregar oportunidade.");
         return;
       }
 
@@ -110,27 +121,36 @@ export function LeadsClient({
     router.refresh();
   }
 
+  function clearFilters() {
+    setSearch("");
+    setStatus("");
+  }
+
   return (
     <div className="space-y-6">
-      {newDrawerOpen && <NewLeadDrawer
-        open={newDrawerOpen}
-        onClose={() =>
-          setNewDrawerOpen(false)
-        }
-        onCreated={handleLeadCreated}
-      />}
+      {newDrawerOpen && (
+        <NewLeadDrawer
+          open={newDrawerOpen}
+          onClose={() =>
+            setNewDrawerOpen(false)
+          }
+          onCreated={handleLeadCreated}
+        />
+      )}
 
-      {selectedLead && <LeadDetailsDrawer
-        lead={selectedLead}
-        open={selectedLead !== null}
-        onClose={() =>
-          setSelectedLead(null)
-        }
-        onLeadChange={handleLeadChange}
-      />}
+      {selectedLead && (
+        <LeadDetailsDrawer
+          lead={selectedLead}
+          open={selectedLead !== null}
+          onClose={() =>
+            setSelectedLead(null)
+          }
+          onLeadChange={handleLeadChange}
+        />
+      )}
 
       <LeadsHeader
-          totalLeads={currentLeads.length}
+        totalLeads={currentLeads.length}
         onNewLead={() =>
           setNewDrawerOpen(true)
         }
@@ -144,19 +164,19 @@ export function LeadsClient({
       />
 
       {loadingLead && (
-        <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 text-sm font-semibold text-orange-400">
+        <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 text-sm font-semibold text-orange-600 dark:text-orange-400">
           Carregando oportunidade...
         </div>
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-[var(--muted)]">
           Mostrando{" "}
-          <strong className="text-white">
+          <strong className="text-[var(--foreground)]">
             {filteredLeads.length}
           </strong>{" "}
           de{" "}
-          <strong className="text-white">
+          <strong className="text-[var(--foreground)]">
             {currentLeads.length}
           </strong>{" "}
           oportunidade(s)
@@ -165,11 +185,8 @@ export function LeadsClient({
         {(search || status) && (
           <button
             type="button"
-            onClick={() => {
-              setSearch("");
-              setStatus("");
-            }}
-            className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+            onClick={clearFilters}
+            className="text-sm font-semibold text-orange-600 transition hover:text-orange-500 dark:text-orange-400 dark:hover:text-orange-300"
           >
             Limpar filtros
           </button>

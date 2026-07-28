@@ -10,17 +10,17 @@ export function LeadsHeader({
   onNewLead,
 }: LeadsHeaderProps) {
   return (
-    <header className="flex flex-col gap-5 rounded-3xl border border-white/[0.07] bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 md:flex-row md:items-center md:justify-between">
+    <header className="flex flex-col gap-5 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 text-[var(--foreground)] shadow-sm md:flex-row md:items-center md:justify-between">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-500">
           Comercial
         </p>
 
-        <h1 className="mt-2 text-4xl font-black tracking-tight text-white">
+        <h1 className="mt-2 text-4xl font-black tracking-tight text-[var(--foreground)]">
           Oportunidades
         </h1>
 
-        <p className="mt-2 text-zinc-400">
+        <p className="mt-2 text-[var(--muted)]">
           {totalLeads} oportunidade(s) cadastrada(s) no funil comercial.
         </p>
       </div>
