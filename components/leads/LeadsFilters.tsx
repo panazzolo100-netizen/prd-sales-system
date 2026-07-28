@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { PIPELINE_STAGES } from "@/lib/pipeline-stages";
 
 type LeadsFiltersProps = {
   search: string;
@@ -47,33 +48,14 @@ export function LeadsFilters({
           Todos os status
         </option>
 
-        <option value="NOVO">
-          Novo
-        </option>
-
-        <option value="CONTATO">
-          Contato
-        </option>
-
-        <option value="VISITA">
-          Visita
-        </option>
-
-        <option value="PROPOSTA">
-          Proposta
-        </option>
-
-        <option value="NEGOCIACAO">
-          Negociação
-        </option>
-
-        <option value="GANHO">
-          Ganho
-        </option>
-
-        <option value="PERDIDO">
-          Perdido
-        </option>
+        {PIPELINE_STAGES.map((stage) => (
+          <option
+            key={stage.status}
+            value={stage.status}
+          >
+            {stage.label}
+          </option>
+        ))}
 
       </select>
 

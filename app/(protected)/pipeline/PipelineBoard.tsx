@@ -32,6 +32,7 @@ import { LeadDetailsDrawer } from "@/components/leads/LeadDetailsDrawer";
 import type { LeadTab } from "@/components/leads/LeadTabs";
 import { LeadStatus } from "@/lib/generated/prisma/enums";
 import { calculatePipelineMetrics } from "@/lib/pipeline-metrics";
+import { PIPELINE_STAGES } from "@/lib/pipeline-stages";
 import type { LeadListItem } from "@/types/lead";
 
 type PipelineLead = {
@@ -68,36 +69,7 @@ type TemperatureFilter =
   | "MORNO"
   | "FRIO";
 
-const etapas = [
-  {
-    status: LeadStatus.NOVO,
-    nome: "Novo",
-  },
-  {
-    status: LeadStatus.CONTATO,
-    nome: "Contato",
-  },
-  {
-    status: LeadStatus.VISITA,
-    nome: "Visita",
-  },
-  {
-    status: LeadStatus.PROPOSTA,
-    nome: "Proposta",
-  },
-  {
-    status: LeadStatus.NEGOCIACAO,
-    nome: "Negociação",
-  },
-  {
-    status: LeadStatus.GANHO,
-    nome: "Ganho",
-  },
-  {
-    status: LeadStatus.PERDIDO,
-    nome: "Perdido",
-  },
-];
+const etapas = PIPELINE_STAGES;
 
 function formatCurrency(value: number | null) {
   return new Intl.NumberFormat("pt-BR", {
@@ -463,7 +435,7 @@ export function PipelineBoard({
       showToast(
         "success",
         `Oportunidade movida para ${
-          newStage?.nome ??
+          newStage?.label ??
           "a nova etapa"
         }.`
       );
@@ -520,7 +492,7 @@ export function PipelineBoard({
     showToast(
       "success",
       `Oportunidade movida para ${
-        stage?.nome ?? "a nova etapa"
+        stage?.label ?? "a nova etapa"
       }.`
     );
   }
@@ -905,7 +877,7 @@ export function PipelineBoard({
                     <div className="mb-5">
                       <div className="flex items-center justify-between">
                         <h2 className="font-bold text-white">
-                          {etapa.nome}
+                          {etapa.label}
                         </h2>
 
                         <span

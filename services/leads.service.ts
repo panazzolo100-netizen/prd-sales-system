@@ -1,6 +1,7 @@
 import { LeadStatus } from "@/lib/generated/prisma/enums";
 import { notifyPipelineStageChange } from "@/services/pipeline-email.service";
 import { isServiceType, sanitizeServiceDetails } from "@/lib/opportunity-service-types";
+import { isActivePipelineStage } from "@/lib/pipeline-stages";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission, requireRole } from "@/services/auth.service";
 async function getCurrentCompanyId() {
@@ -64,6 +65,9 @@ export async function createCompanyLead(
     await getCurrentCompanyId();
 
   if (!isServiceType(data.serviceType)) throw new Error("Tipo de serviço inválido.");
+  if (data.status && !isActivePipelineStage(data.status)) {
+    throw new Error("Etapa do Pipeline inválida.");
+  }
   const lead = await createLead({
     ...data,
     serviceDetails: sanitizeServiceDetails(data.serviceType, data.serviceDetails),
@@ -96,6 +100,10 @@ export async function updateCompanyLead(
 
   if (!currentLead) {
     throw new Error("Lead não encontrado.");
+  }
+
+  if (data.status && !isActivePipelineStage(data.status)) {
+    throw new Error("Etapa do Pipeline inválida.");
   }
 
   if (data.serviceType !== undefined && !isServiceType(data.serviceType)) throw new Error("Tipo de serviço inválido.");
