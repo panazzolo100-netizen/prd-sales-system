@@ -55,8 +55,14 @@ type PipelineLead = {
   }[];
 };
 
+type PipelineOwner = {
+  id: string;
+  name: string;
+};
+
 type PipelineBoardProps = {
   initialLeads: PipelineLead[];
+  availableOwners: PipelineOwner[];
   canArchive: boolean;
 };
 
@@ -290,6 +296,7 @@ function getLeadReferenceDate(
 
 export function PipelineBoard({
   initialLeads,
+  availableOwners,
   canArchive,
 }: PipelineBoardProps) {
   const [leads, setLeads] =
@@ -336,6 +343,15 @@ export function PipelineBoard({
       string
     >();
 
+    availableOwners.forEach(
+      (owner) => {
+        ownersById.set(
+          owner.id,
+          owner.name
+        );
+      }
+    );
+
     leads.forEach((lead) => {
       if (lead.owner) {
         ownersById.set(
@@ -358,7 +374,7 @@ export function PipelineBoard({
           "pt-BR"
         )
       );
-  }, [leads]);
+  }, [availableOwners, leads]);
 
   const filteredLeads = useMemo(() => {
     const normalizedSearch =
@@ -959,7 +975,12 @@ export function PipelineBoard({
           </div>
         ) : (
           <div className="overflow-x-auto pb-4">
-            <div className="grid min-w-[1900px] grid-cols-7 gap-4">
+            <div
+              className="grid w-full gap-4"
+              style={{
+                gridTemplateColumns: `repeat(${etapas.length}, minmax(280px, 1fr))`,
+              }}
+            >
               {etapas.map((etapa) => {
                 const leadsDaEtapa =
                   filteredLeads.filter(

@@ -4,6 +4,7 @@ import { isServiceType, sanitizeServiceDetails } from "@/lib/opportunity-service
 import { isActivePipelineStage } from "@/lib/pipeline-stages";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission, requireRole } from "@/services/auth.service";
+import { listUsersByCompany } from "@/repositories/users.repository";
 async function getCurrentCompanyId() {
   return (await requirePermission(PERMISSIONS.COMMERCIAL)).companyId;
 }
@@ -29,6 +30,27 @@ export async function listCompanyLeads() {
 
   const leads = await findLeadsByCompany(companyId);
   return leads;
+}
+
+export async function listCompanyLeadOwners() {
+  const current =
+    await requirePermission(
+      PERMISSIONS.COMMERCIAL
+    );
+
+  const users = await listUsersByCompany(
+    current.companyId
+  );
+
+  return users
+    .filter(
+      (user) =>
+        user.role !== "CLIENTE"
+    )
+    .map((user) => ({
+      id: user.id,
+      name: user.name,
+    }));
 }
 
 export async function getCompanyLeadById(
