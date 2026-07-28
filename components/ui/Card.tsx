@@ -17,17 +17,16 @@ export function Card({
         overflow-hidden
         rounded-3xl
         border
-        border-white/[0.06]
-        bg-gradient-to-b
-        from-zinc-900
-        to-zinc-950
+        border-[var(--border)]
+        bg-[var(--surface)]
         p-6
+        text-[var(--foreground)]
         shadow-2xl
-        shadow-black/20
+        shadow-black/10
         transition-all
         duration-300
         hover:-translate-y-1
-        hover:border-orange-500/20
+        hover:border-orange-500/25
         hover:shadow-orange-500/10
         ${className}
       `}

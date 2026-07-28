@@ -50,14 +50,15 @@ export default async function Dashboard() {
     return (
       <AppLayout>
         <main className="space-y-8">
-          <section className="rounded-[28px] border border-white/[0.07] bg-gradient-to-br from-zinc-900 to-orange-950/30 p-7 lg:p-9">
-            <p className="text-sm font-semibold capitalize text-zinc-500">
+          <section className="rounded-[28px] border border-[var(--border)] p-7 shadow-xl lg:p-9"
+            style={{ background: "linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--surface) 88%, #f97316 12%))" }}>
+            <p className="text-sm font-semibold capitalize text-[var(--muted)]">
               {formatarData()}
             </p>
-            <h1 className="mt-3 text-4xl font-black tracking-tight text-white">
+            <h1 className="mt-3 text-4xl font-black tracking-tight text-[var(--foreground)]">
               <DashboardGreeting firstName={userPresentation.firstName} />
             </h1>
-            <p className="mt-3 text-zinc-400">
+            <p className="mt-3 text-[var(--muted)]">
               Acompanhe oportunidades, propostas e o pipeline comercial.
             </p>
             <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -81,21 +82,22 @@ export default async function Dashboard() {
   return (
     <AppLayout>
       <main className="space-y-8">
-        <section className="relative overflow-hidden rounded-[28px] border border-white/[0.07] bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/30 p-7 shadow-2xl shadow-black/20 lg:p-9">
+        <section className="relative overflow-hidden rounded-[28px] border border-[var(--border)] p-7 shadow-xl lg:p-9"
+          style={{ background: "linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--surface) 88%, #f97316 12%))" }}>
           <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-orange-500/10 blur-[100px]" />
 
           <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <p className="text-sm font-semibold capitalize text-zinc-500">
+              <p className="text-sm font-semibold capitalize text-[var(--muted)]">
                 {formatarData()}
               </p>
 
-              <h1 className="mt-3 text-4xl font-black tracking-tight text-white lg:text-5xl">
+              <h1 className="mt-3 text-4xl font-black tracking-tight text-[var(--foreground)] lg:text-5xl">
                 <DashboardGreeting firstName={userPresentation.firstName} />
                 <span className="ml-2">👋</span>
               </h1>
 
-              <p className="mt-3 max-w-2xl text-zinc-400">
+              <p className="mt-3 max-w-2xl text-[var(--muted)]">
                 Veja os principais números, pendências e atividades da PRD
                 Engenharia.
               </p>
@@ -103,7 +105,7 @@ export default async function Dashboard() {
 
             <a
               href="/agenda"
-              className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-orange-500/50 hover:bg-orange-500/10"
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] px-5 py-3 text-sm font-bold text-[var(--foreground)] transition hover:border-orange-500/50 hover:bg-orange-500/10"
             >
               <CalendarDays size={18} />
 
@@ -219,7 +221,7 @@ export default async function Dashboard() {
               iconClass={
                 data.ordensAtrasadas > 0
                   ? "bg-red-500/15 text-red-400"
-                  : "bg-zinc-500/15 text-zinc-400"
+                  : "bg-zinc-500/15 text-[var(--muted)]"
               }
             />
 
@@ -244,7 +246,7 @@ export default async function Dashboard() {
               label="Total vendido"
               value={moeda(data.totalVendido)}
               description="Valor total dos projetos"
-              valueClass="text-white"
+              valueClass="text-[var(--foreground)]"
             />
 
             <FinancialCard
@@ -416,22 +418,22 @@ function HeroIndicator({
   iconClass: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-black/20 p-5 backdrop-blur-sm">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] p-5 backdrop-blur-sm">
       <div
         className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconClass}`}
       >
         <Icon size={20} />
       </div>
 
-      <p className="mt-5 text-sm font-medium text-zinc-500">
+      <p className="mt-5 text-sm font-medium text-[var(--muted)]">
         {label}
       </p>
 
-      <p className="mt-1 break-words text-2xl font-black text-white">
+      <p className="mt-1 break-words text-2xl font-black text-[var(--foreground)]">
         {value}
       </p>
 
-      <p className="mt-2 text-xs text-zinc-600">
+      <p className="mt-2 text-xs text-[var(--muted)]">
         {description}
       </p>
     </div>
@@ -452,7 +454,7 @@ function MetricCard({
   iconClass: string;
 }) {
   return (
-    <div className="group rounded-2xl border border-white/[0.07] bg-zinc-900 p-5 transition duration-200 hover:-translate-y-0.5 hover:border-white/[0.12] hover:bg-zinc-900/80">
+    <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/25 hover:bg-[var(--surface-raised)]">
       <div className="flex items-start justify-between gap-4">
         <div
           className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconClass}`}
@@ -462,19 +464,19 @@ function MetricCard({
 
         <ArrowRight
           size={17}
-          className="text-zinc-700 transition group-hover:translate-x-1 group-hover:text-zinc-400"
+          className="text-[var(--muted)] transition group-hover:translate-x-1 group-hover:text-[var(--muted)]"
         />
       </div>
 
-      <p className="mt-6 text-3xl font-black text-white">
+      <p className="mt-6 text-3xl font-black text-[var(--foreground)]">
         {value}
       </p>
 
-      <p className="mt-2 text-sm font-semibold text-zinc-300">
+      <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
         {label}
       </p>
 
-      <p className="mt-1 text-xs text-zinc-600">
+      <p className="mt-1 text-xs text-[var(--muted)]">
         {detail}
       </p>
     </div>
@@ -493,8 +495,8 @@ function FinancialCard({
   valueClass: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-zinc-900 p-6">
-      <p className="text-sm font-medium text-zinc-500">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
+      <p className="text-sm font-medium text-[var(--muted)]">
         {label}
       </p>
 
@@ -504,7 +506,7 @@ function FinancialCard({
         {value}
       </h2>
 
-      <p className="mt-3 text-xs text-zinc-600">
+      <p className="mt-3 text-xs text-[var(--muted)]">
         {description}
       </p>
     </div>
@@ -525,14 +527,14 @@ function SectionHeader({
       <h2
         className={
           compact
-            ? "text-xl font-bold text-white"
-            : "text-2xl font-black text-white"
+            ? "text-xl font-bold text-[var(--foreground)]"
+            : "text-2xl font-black text-[var(--foreground)]"
         }
       >
         {title}
       </h2>
 
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-1 text-sm text-[var(--muted)]">
         {description}
       </p>
     </div>
@@ -547,12 +549,12 @@ function Linha({
   value: string | number;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-zinc-800 pb-3 last:border-none last:pb-0">
-      <span className="text-sm text-zinc-400">
+    <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 last:border-none last:pb-0">
+      <span className="text-sm text-[var(--muted)]">
         {label}
       </span>
 
-      <strong className="text-sm text-white">
+      <strong className="text-sm text-[var(--foreground)]">
         {value}
       </strong>
     </div>

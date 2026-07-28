@@ -18,19 +18,35 @@ const columns = [
   { status: LeadStatus.PERDIDO, label: "Perdido" },
 ];
 
-export function PipelineOverview({ pipeline }: PipelineOverviewProps) {
+export function PipelineOverview({
+  pipeline,
+}: PipelineOverviewProps) {
   function getTotal(status: LeadStatus) {
     return pipeline.find((item) => item.status === status)?.total ?? 0;
   }
 
   return (
     <Card className="col-span-2 h-[420px]">
-      <h2 className="mb-6 text-2xl font-bold">Pipeline Comercial</h2>
+      <h2 className="mb-6 text-2xl font-bold text-[var(--foreground)]">
+        Pipeline Comercial
+      </h2>
 
       <div className="grid grid-cols-5 gap-4">
         {columns.map((column) => (
-          <div key={column.status} className="rounded-2xl bg-zinc-800 p-4">
-            <p className="text-sm text-zinc-400">{column.label}</p>
+          <div
+            key={column.status}
+            className="
+              rounded-2xl
+              border
+              border-[var(--border)]
+              bg-[var(--surface-raised)]
+              p-4
+              transition-colors
+            "
+          >
+            <p className="text-sm text-[var(--muted)]">
+              {column.label}
+            </p>
 
             <h3 className="mt-3 text-3xl font-black text-orange-500">
               {getTotal(column.status)}

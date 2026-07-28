@@ -10,13 +10,23 @@ export function ActivityFeed() {
 
   return (
     <Card className="h-[420px]">
-      <h2 className="mb-6 text-2xl font-bold">Últimas Atividades</h2>
+      <h2 className="mb-6 text-2xl font-bold text-[var(--foreground)]">
+        Últimas Atividades
+      </h2>
 
       <div className="space-y-4">
         {atividades.map((atividade, index) => (
-          <div key={index} className="border-l-2 border-orange-500 pl-4">
-            <p className="font-semibold">{atividade}</p>
-            <p className="text-sm text-zinc-500">Agora há pouco</p>
+          <div
+            key={index}
+            className="border-l-2 border-orange-500 pl-4"
+          >
+            <p className="font-semibold text-[var(--foreground)]">
+              {atividade}
+            </p>
+
+            <p className="text-sm text-[var(--muted)]">
+              Agora há pouco
+            </p>
           </div>
         ))}
       </div>
