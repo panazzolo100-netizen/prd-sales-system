@@ -34,6 +34,7 @@ import {
   PERMISSIONS,
   canAccessModule,
 } from "@/lib/auth/permissions";
+import type { UserPresentation } from "@/lib/auth/user-presentation";
 
 const grupos = [
   {
@@ -156,7 +157,13 @@ const grupos = [
   },
 ];
 
-export function Sidebar({ role, name }: { role: AppRole; name: string }) {
+export function Sidebar({
+  role,
+  user,
+}: {
+  role: AppRole;
+  user: UserPresentation;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -391,16 +398,16 @@ export function Sidebar({ role, name }: { role: AppRole; name: string }) {
           <div className="mb-3 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-sm font-black text-white shadow-lg shadow-orange-500/10">
-                DP
+                {user.initials}
               </div>
 
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-white">
-                  {name}
+                  {user.displayName}
                 </p>
 
                 <p className="truncate text-xs text-zinc-500">
-                  {role.replaceAll("_", " ")}
+                  {user.roleLabel}
                 </p>
               </div>
             </div>

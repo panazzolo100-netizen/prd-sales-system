@@ -1,4 +1,4 @@
-export function Topbar() {
+export function Topbar({ initials = "US" }: { initials?: string }) {
   return (
     <header className="mb-8 flex items-center justify-between">
       <div>
@@ -15,7 +15,7 @@ export function Topbar() {
         />
 
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 font-bold">
-          DP
+          {initials}
         </div>
       </div>
     </header>

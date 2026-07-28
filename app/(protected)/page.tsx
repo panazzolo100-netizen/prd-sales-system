@@ -13,10 +13,12 @@ import {
 } from "lucide-react";
 
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
 import { PipelineOverview } from "@/components/dashboard/PipelineOverview";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/Card";
 import { getCurrentAppUser } from "@/lib/auth/current-user";
+import { getUserPresentation } from "@/lib/auth/user-presentation";
 import { getDashboardData } from "@/services/dashboard";
 
 function moeda(valor: number) {
@@ -36,28 +38,13 @@ function formatarData() {
   }).format(new Date());
 }
 
-function obterSaudacao() {
-  const hora = new Date().getHours();
-
-  if (hora < 12) {
-    return "Bom dia";
-  }
-
-  if (hora < 18) {
-    return "Boa tarde";
-  }
-
-  return "Boa noite";
-}
-
 export default async function Dashboard() {
   const [data, usuario] = await Promise.all([
     getDashboardData(),
     getCurrentAppUser(),
   ]);
 
-  const primeiroNome =
-    usuario.name.split(" ")[0] || "Usuário";
+  const userPresentation = getUserPresentation(usuario);
 
   if (data.scope === "COMMERCIAL") {
     return (
@@ -68,7 +55,7 @@ export default async function Dashboard() {
               {formatarData()}
             </p>
             <h1 className="mt-3 text-4xl font-black tracking-tight text-white">
-              {obterSaudacao()}, {primeiroNome}
+              <DashboardGreeting firstName={userPresentation.firstName} />
             </h1>
             <p className="mt-3 text-zinc-400">
               Acompanhe oportunidades, propostas e o pipeline comercial.
@@ -104,7 +91,7 @@ export default async function Dashboard() {
               </p>
 
               <h1 className="mt-3 text-4xl font-black tracking-tight text-white lg:text-5xl">
-                {obterSaudacao()}, {primeiroNome}
+                <DashboardGreeting firstName={userPresentation.firstName} />
                 <span className="ml-2">👋</span>
               </h1>
 

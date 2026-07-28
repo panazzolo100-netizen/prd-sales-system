@@ -12,6 +12,7 @@ import { GlobalSearch } from "./GlobalSearch";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { MobileNav } from "@/components/layout/MobileNav";
 import type { AppRole } from "@/lib/auth/permissions";
+import type { UserPresentation } from "@/lib/auth/user-presentation";
 
 const pageTitles: Record<
   string,
@@ -114,7 +115,13 @@ function getPageInformation(pathname: string) {
   );
 }
 
-export function Topbar({ role }: { role: AppRole }) {
+export function Topbar({
+  role,
+  user,
+}: {
+  role: AppRole;
+  user: UserPresentation;
+}) {
   const pathname = usePathname();
 
   const pageInformation =
@@ -169,16 +176,16 @@ export function Topbar({ role }: { role: AppRole }) {
             className="flex h-11 items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.035] px-2.5 transition hover:border-white/[0.13] hover:bg-white/[0.055]"
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-xs font-black text-white shadow-lg shadow-orange-500/15">
-              DP
+              {user.initials}
             </div>
 
             <div className="hidden text-left 2xl:block">
               <p className="max-w-32 truncate text-xs font-bold text-white">
-                Daniel Panazzolo
+                {user.displayName}
               </p>
 
               <p className="text-[10px] text-zinc-600">
-                Administrador
+                {user.roleLabel}
               </p>
             </div>
 
