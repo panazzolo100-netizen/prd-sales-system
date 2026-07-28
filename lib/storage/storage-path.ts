@@ -13,6 +13,7 @@ const SCOPE_PATHS: Record<StorageScope, (entityId?: string) => string[]> = {
   "service-order-photo": (id) => ["service-orders", requireEntityId(id), "photos"],
   "service-order-signature": (id) => ["service-orders", requireEntityId(id), "signatures"],
   "lead-file": (id) => ["leads", requireEntityId(id), "files"],
+  "proposal-internal": (id) => ["leads", requireEntityId(id), "proposal-internal"],
   "financial-attachment": (id) => ["financial", requireEntityId(id), "attachments"],
   branding: () => ["branding"],
 };

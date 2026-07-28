@@ -5,7 +5,6 @@ export function Sidebar() {
     "Clientes",
     "Pipeline",
     "Agenda",
-    "Propostas",
     "Engenharia",
     "Financeiro",
   ];

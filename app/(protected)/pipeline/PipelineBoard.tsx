@@ -1225,7 +1225,7 @@ export function PipelineBoard({
                                               onClick={() =>
                                                 openLead(
                                                   lead.id,
-                                                  "Propostas"
+                                                  "Proposta"
                                                 )
                                               }
                                             />

@@ -5,7 +5,6 @@ const menu = [
   { nome: "Dashboard", rota: "/" },
   { nome: "Leads", rota: "/leads" },
   { nome: "Clientes", rota: "/clientes" },
-  { nome: "Propostas", rota: "/propostas" },
   { nome: "Agenda", rota: "/agenda" },
   { nome: "Financeiro", rota: "/financeiro" },
   { nome: "Engenharia", rota: "/engenharia" },

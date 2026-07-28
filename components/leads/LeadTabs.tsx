@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, Plus } from "lucide-react";
 
 import { LeadDimensioning } from "@/components/leads/LeadDimensioning";
+import type { ProposalExcelPreview } from "@/lib/proposal-excel";
 import type { LeadListItem } from "@/types/lead";
 import { inferLegacyServiceType, isSolarService, serviceTypeConfig, serviceTypeLabel, type OpportunityServiceType, type ServiceField } from "@/lib/opportunity-service-types";
 
 export type LeadTab =
   | "Resumo"
   | "Timeline"
-  | "Propostas"
+  | "Proposta"
   | "Engenharia"
   | "Dimensionamento"
   | "Arquivos";
@@ -19,7 +20,7 @@ export type LeadTab =
 const allTabs: LeadTab[] = [
   "Resumo",
   "Timeline",
-  "Propostas",
+  "Proposta",
   "Engenharia",
   "Dimensionamento",
   "Arquivos",
@@ -44,7 +45,11 @@ type Props = {
       amount: number;
       status: string;
       validUntil: Date | null;
+      paymentTerms: string | null;
+      executionDeadline: string | null;
+      commercialNotes: string | null;
       createdAt: Date;
+      updatedAt: Date;
 
       systemPower: number | null;
       monthlySaving: number | null;
@@ -57,6 +62,7 @@ type Props = {
       name: string;
       storageReference: string;
       accessUrl: string | null;
+      mimeType: string;
       size: number;
       createdAt: Date;
     }[];
@@ -123,7 +129,7 @@ export function LeadTabs({
           />
         )}
 
-        {active === "Propostas" && (
+        {active === "Proposta" && (
           <LeadProposals
             lead={lead}
             onLeadChange={onLeadChange}
@@ -856,12 +862,25 @@ function LeadTimeline({ lead, showActivityAuthors = false }: Props) {
 
 
 function LeadProposals({ lead, onLeadChange }: Props) {
-  const [title,setTitle] = useState("");
+  const [editing, setEditing] = useState(!lead.proposal);
+  const [title,setTitle] = useState(lead.proposal?.title ?? "");
 
-  const [amount,setAmount] = useState("");
+  const [amount,setAmount] = useState(
+    lead.proposal ? String(lead.proposal.amount) : ""
+  );
 
   const [saving,setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [status, setStatus] = useState(lead.proposal?.status ?? "RASCUNHO");
+  const [validUntil, setValidUntil] = useState(
+    lead.proposal?.validUntil
+      ? new Date(lead.proposal.validUntil).toISOString().slice(0, 10)
+      : ""
+  );
+  const [paymentTerms, setPaymentTerms] = useState(lead.proposal?.paymentTerms ?? "");
+  const [executionDeadline, setExecutionDeadline] = useState(lead.proposal?.executionDeadline ?? "");
+  const [commercialNotes, setCommercialNotes] = useState(lead.proposal?.commercialNotes ?? "");
 
 
 
@@ -869,11 +888,53 @@ function LeadProposals({ lead, onLeadChange }: Props) {
   const proposalServiceType = inferLegacyServiceType(lead);
   const solarProposal = isSolarService(proposalServiceType);
 
+  useEffect(() => {
+    setTitle(lead.proposal?.title ?? "");
+    setAmount(lead.proposal ? String(lead.proposal.amount) : "");
+    setStatus(lead.proposal?.status ?? "RASCUNHO");
+    setValidUntil(
+      lead.proposal?.validUntil
+        ? new Date(lead.proposal.validUntil).toISOString().slice(0, 10)
+        : ""
+    );
+    setPaymentTerms(lead.proposal?.paymentTerms ?? "");
+    setExecutionDeadline(lead.proposal?.executionDeadline ?? "");
+    setCommercialNotes(lead.proposal?.commercialNotes ?? "");
+    setEditing(!lead.proposal);
+  }, [lead.id, lead.proposal]);
+
+  function restorePersistedValues() {
+    setTitle(proposal?.title ?? "");
+    setAmount(proposal ? String(proposal.amount) : "");
+    setStatus(proposal?.status ?? "RASCUNHO");
+    setValidUntil(
+      proposal?.validUntil
+        ? new Date(proposal.validUntil).toISOString().slice(0, 10)
+        : ""
+    );
+    setPaymentTerms(proposal?.paymentTerms ?? "");
+    setExecutionDeadline(proposal?.executionDeadline ?? "");
+    setCommercialNotes(proposal?.commercialNotes ?? "");
+    setSaveError(null);
+    setSaveSuccess(null);
+  }
+
+  function startEditing() {
+    restorePersistedValues();
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    restorePersistedValues();
+    setEditing(false);
+  }
+
 async function createProposal() {
   if (!title || !amount) return;
 
   setSaving(true);
   setSaveError(null);
+  setSaveSuccess(null);
 
   try {
     const response = await fetch("/api/proposals", {
@@ -885,6 +946,11 @@ async function createProposal() {
         leadId: lead.id,
         title,
         amount: Number(amount),
+        status,
+        validUntil: validUntil || null,
+        paymentTerms: paymentTerms.trim() || null,
+        executionDeadline: executionDeadline.trim() || null,
+        commercialNotes: commercialNotes.trim() || null,
       }),
     });
     const savedProposal = await response.json();
@@ -898,8 +964,10 @@ async function createProposal() {
       estimatedValue: savedProposal.leadEstimatedValue,
       updatedAt: savedProposal.leadUpdatedAt,
     });
-    setTitle("");
-    setAmount("");
+    setTitle(savedProposal.title);
+    setAmount(String(savedProposal.amount));
+    setEditing(false);
+    setSaveSuccess("Proposta atualizada com sucesso.");
   } catch (error) {
     setSaveError(
       error instanceof Error
@@ -1154,12 +1222,12 @@ function generatePdf() {
 
 
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
+      {editing && <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
 
 
         <h3 className="text-lg font-bold text-white">
 
-          Nova proposta
+          {proposal ? "Editar proposta" : "Nova proposta"}
 
         </h3>
 
@@ -1195,7 +1263,31 @@ function generatePdf() {
 
 
 
+        <div className="grid gap-4 sm:grid-cols-2">
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"
+          >
+            {["RASCUNHO", "ENVIADA", "EM_NEGOCIACAO", "APROVADA", "RECUSADA", "EXPIRADA", "CANCELADA", "CONCLUIDA"].map((item) => (
+              <option key={item} value={item}>{item.replaceAll("_", " ")}</option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={validUntil}
+            onChange={(event) => setValidUntil(event.target.value)}
+            className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"
+          />
+        </div>
+
+        <input value={paymentTerms} onChange={(event) => setPaymentTerms(event.target.value)} placeholder="Condições de pagamento" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+        <input value={executionDeadline} onChange={(event) => setExecutionDeadline(event.target.value)} placeholder="Prazo de execução" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+        <textarea value={commercialNotes} onChange={(event) => setCommercialNotes(event.target.value)} placeholder="Observações comerciais" rows={3} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+
+        <div className="flex flex-wrap gap-3">
         <button
+          type="button"
 
           onClick={createProposal}
 
@@ -1209,9 +1301,17 @@ function generatePdf() {
 
           {saving
             ? "Salvando..."
-            : "Criar proposta"}
+            : proposal
+              ? "Salvar proposta"
+              : "Criar proposta"}
 
         </button>
+        {proposal && (
+          <button type="button" onClick={cancelEditing} disabled={saving} className="rounded-xl border border-zinc-700 px-5 py-3 font-bold text-zinc-300 disabled:opacity-50">
+            Cancelar
+          </button>
+        )}
+        </div>
         {saveError && (
           <p role="alert" className="text-sm font-medium text-red-400">
             {saveError}
@@ -1219,7 +1319,7 @@ function generatePdf() {
         )}
 
 
-      </div>
+      </div>}
 
 
 
@@ -1263,6 +1363,8 @@ function generatePdf() {
 
     <div><p className="text-xs text-zinc-500">Tipo de serviço</p><p className="text-white">{serviceTypeLabel(proposalServiceType)}</p></div>
     <div><p className="text-xs text-zinc-500">Validade</p><p className="text-white">{proposal.validUntil ? new Date(proposal.validUntil).toLocaleDateString("pt-BR") : "Não informada"}</p></div>
+    <div><p className="text-xs text-zinc-500">Criada em</p><p className="text-white">{new Date(proposal.createdAt).toLocaleString("pt-BR")}</p></div>
+    <div><p className="text-xs text-zinc-500">Última atualização</p><p className="text-white">{new Date(proposal.updatedAt).toLocaleString("pt-BR")}</p></div>
 
     {solarProposal && <><div>
       <p className="text-xs text-zinc-500">Potência</p>
@@ -1296,11 +1398,14 @@ function generatePdf() {
 
   <div className="flex gap-3">
 
-    <button
-      className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white"
-    >
-      Editar
-    </button>
+  <button
+    type="button"
+    onClick={startEditing}
+    disabled={saving}
+    className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+  >
+    Editar
+  </button>
 
   <button
   type="button"
@@ -1317,6 +1422,13 @@ function generatePdf() {
 
       )}
 
+      {saveSuccess && !editing && (
+        <p role="status" className="text-sm font-medium text-emerald-400">
+          {saveSuccess}
+        </p>
+      )}
+
+      <ProposalAttachments lead={lead} onLeadChange={onLeadChange} />
 
 
     </div>
@@ -1324,6 +1436,465 @@ function generatePdf() {
   );
 
 }
+
+type ProposalFileKind = "PROPOSAL_INTERNAL" | "PROPOSAL_CLIENT";
+
+const proposalFileConfig = {
+  PROPOSAL_INTERNAL: {
+    title: "Proposta interna — Excel",
+    description: "Planilha interna para composição e cálculo da proposta.",
+    accept: ".xls,.xlsx",
+    mimeTypes: [
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ],
+  },
+  PROPOSAL_CLIENT: {
+    title: "Proposta para o cliente — PDF",
+    description: "Documento final destinado ao cliente.",
+    accept: ".pdf",
+    mimeTypes: ["application/pdf"],
+  },
+} as const;
+
+function ProposalAttachments({ lead, onLeadChange }: Props) {
+  const [busyKind, setBusyKind] = useState<ProposalFileKind | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{
+    kind: ProposalFileKind;
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [preview, setPreview] = useState<ProposalExcelPreview | null>(null);
+  const [previewFileId, setPreviewFileId] = useState<string | null>(null);
+  const [dismissedPreviewFileId, setDismissedPreviewFileId] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  function fileFor(kind: ProposalFileKind) {
+    if (kind === "PROPOSAL_INTERNAL") {
+      return (lead.files ?? []).find(
+        (file) =>
+          file.storageReference.includes(
+            `/leads/${lead.id}/proposal-internal/`
+          ) &&
+          (
+            proposalFileConfig.PROPOSAL_INTERNAL.mimeTypes as readonly string[]
+          ).includes(file.mimeType)
+      );
+    }
+    const allowed = proposalFileConfig[kind].mimeTypes as readonly string[];
+    return (lead.files ?? []).find((file) => allowed.includes(file.mimeType));
+  }
+
+  const internalProposalFile = fileFor("PROPOSAL_INTERNAL");
+  const internalProposalFileId = internalProposalFile?.id ?? null;
+
+  const loadPreview = useCallback(async (fileId: string) => {
+    setAnalyzing(true);
+    setFeedback(null);
+    try {
+      const response = await fetch("/api/leads/proposal-excel/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: lead.id, fileId }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error ?? "Erro ao analisar proposta.");
+      }
+      setPreview(result as ProposalExcelPreview);
+      setPreviewFileId(fileId);
+    } catch (error) {
+      setPreview(null);
+      setPreviewFileId(null);
+      setFeedback({
+        kind: "PROPOSAL_INTERNAL",
+        type: "error",
+        text:
+          error instanceof Error ? error.message : "Erro ao analisar proposta.",
+      });
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [lead.id]);
+
+  useEffect(() => {
+    if (!internalProposalFileId) {
+      setPreview(null);
+      setPreviewFileId(null);
+      return;
+    }
+    if (
+      previewFileId !== internalProposalFileId &&
+      dismissedPreviewFileId !== internalProposalFileId
+    ) {
+      void loadPreview(internalProposalFileId);
+    }
+  }, [
+    internalProposalFileId,
+    previewFileId,
+    dismissedPreviewFileId,
+    loadPreview,
+  ]);
+
+  async function confirmPreview() {
+    if (!previewFileId || confirming) return;
+    setConfirming(true);
+    setFeedback(null);
+    try {
+      const response = await fetch("/api/leads/proposal-excel/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: lead.id, fileId: previewFileId }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error ?? "Erro ao confirmar proposta.");
+      }
+      setPreview(result.preview as ProposalExcelPreview);
+      onLeadChange?.({
+        ...lead,
+        proposal: result.proposal,
+        estimatedValue: result.leadEstimatedValue,
+        updatedAt: result.leadUpdatedAt,
+      });
+      setFeedback({
+        kind: "PROPOSAL_INTERNAL",
+        type: "success",
+        text: "Proposta e valor estimado atualizados com sucesso.",
+      });
+    } catch (error) {
+      setFeedback({
+        kind: "PROPOSAL_INTERNAL",
+        type: "error",
+        text:
+          error instanceof Error ? error.message : "Erro ao confirmar proposta.",
+      });
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  async function requestDelete(id: string) {
+    const response = await fetch("/api/leads/files", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error ?? "Erro ao excluir arquivo.");
+    }
+  }
+
+  async function deleteFile(id: string, kind: ProposalFileKind) {
+    if (!window.confirm("Deseja excluir este arquivo de proposta?")) return;
+    setDeletingId(id);
+    setFeedback(null);
+    try {
+      await requestDelete(id);
+      onLeadChange?.({
+        ...lead,
+        files: (lead.files ?? []).filter((file) => file.id !== id),
+      });
+      if (kind === "PROPOSAL_INTERNAL") {
+        setPreview(null);
+        setPreviewFileId(null);
+        setDismissedPreviewFileId(null);
+      }
+      setFeedback({ kind, type: "success", text: "Arquivo excluído com sucesso." });
+    } catch (error) {
+      setFeedback({
+        kind,
+        type: "error",
+        text: error instanceof Error ? error.message : "Erro ao excluir arquivo.",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function upload(
+    event: React.ChangeEvent<HTMLInputElement>,
+    kind: ProposalFileKind
+  ) {
+    const file = event.target.files?.[0];
+    if (!file || busyKind) return;
+    const config = proposalFileConfig[kind];
+    if (!(config.mimeTypes as readonly string[]).includes(file.type)) {
+      setFeedback({
+        kind,
+        type: "error",
+        text:
+          kind === "PROPOSAL_INTERNAL"
+            ? "Selecione um arquivo Excel (.xls ou .xlsx)."
+            : "Selecione um arquivo PDF.",
+      });
+      event.target.value = "";
+      return;
+    }
+
+    setBusyKind(kind);
+    setFeedback(null);
+    const previous = fileFor(kind);
+    const formData = new FormData();
+    formData.append("leadId", lead.id);
+    formData.append("kind", kind);
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/leads/files", {
+        method: "POST",
+        body: formData,
+      });
+      const savedFile = await response.json();
+      if (!response.ok) {
+        throw new Error(savedFile.error ?? "Erro ao enviar arquivo.");
+      }
+
+      let previousRemoved = true;
+      if (previous) {
+        try {
+          await requestDelete(previous.id);
+        } catch {
+          previousRemoved = false;
+        }
+      }
+      onLeadChange?.({
+        ...lead,
+        files: [
+          savedFile,
+          ...(lead.files ?? []).filter(
+            (item) => !previousRemoved || item.id !== previous?.id
+          ),
+        ],
+      });
+      if (kind === "PROPOSAL_INTERNAL") {
+        setDismissedPreviewFileId(null);
+        await loadPreview(savedFile.id);
+      }
+      setFeedback({
+        kind,
+        type: previousRemoved ? "success" : "error",
+        text: previousRemoved
+          ? previous
+            ? "Arquivo substituído com sucesso."
+            : "Arquivo enviado com sucesso."
+          : "O novo arquivo foi enviado, mas o anterior não pôde ser removido.",
+      });
+    } catch (error) {
+      setFeedback({
+        kind,
+        type: "error",
+        text: error instanceof Error ? error.message : "Erro ao enviar arquivo.",
+      });
+    } finally {
+      event.target.value = "";
+      setBusyKind(null);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+    <div className="grid gap-5 xl:grid-cols-2">
+      {(Object.keys(proposalFileConfig) as ProposalFileKind[]).map((kind) => {
+        const config = proposalFileConfig[kind];
+        const file = fileFor(kind);
+        const isBusy = busyKind === kind;
+        return (
+          <section
+            key={kind}
+            className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6"
+          >
+            <h3 className="text-lg font-bold text-white">{config.title}</h3>
+            <p className="mt-1 text-sm text-zinc-400">{config.description}</p>
+
+            {file ? (
+              <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+                <p className="truncate font-semibold text-white">{file.name}</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Enviado em {new Date(file.createdAt).toLocaleString("pt-BR")}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <a
+                    href={`/api/leads/files?id=${encodeURIComponent(file.id)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-orange-500"
+                  >
+                    {kind === "PROPOSAL_CLIENT" ? "Abrir / baixar" : "Baixar"}
+                  </a>
+                  <label className="cursor-pointer rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-orange-500">
+                    {isBusy ? "Enviando..." : "Substituir"}
+                    <input
+                      type="file"
+                      accept={config.accept}
+                      disabled={isBusy || deletingId === file.id}
+                      onChange={(event) => void upload(event, kind)}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={isBusy || deletingId === file.id}
+                    onClick={() => void deleteFile(file.id, kind)}
+                    className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    {deletingId === file.id ? "Excluindo..." : "Excluir"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="mt-5 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 p-6 text-sm font-semibold text-zinc-300 hover:border-orange-500">
+                <Upload size={18} />
+                {isBusy ? "Enviando..." : "Anexar arquivo"}
+                <input
+                  type="file"
+                  accept={config.accept}
+                  disabled={isBusy}
+                  onChange={(event) => void upload(event, kind)}
+                  className="hidden"
+                />
+              </label>
+            )}
+
+            {feedback?.kind === kind && (
+              <p
+                role="status"
+                className={`mt-3 text-sm ${
+                  feedback.type === "success"
+                    ? "text-emerald-400"
+                    : "text-red-400"
+                }`}
+              >
+                {feedback.text}
+              </p>
+            )}
+          </section>
+        );
+      })}
+    </div>
+    {analyzing && (
+      <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-6 text-sm font-medium text-orange-400">
+        Analisando proposta interna...
+      </div>
+    )}
+    {preview && (
+      <ProposalExcelPreviewCard
+        preview={preview}
+        confirming={confirming}
+        onCancel={() => {
+          setDismissedPreviewFileId(previewFileId);
+          setPreview(null);
+          setPreviewFileId(null);
+        }}
+        onConfirm={() => void confirmPreview()}
+      />
+    )}
+    </div>
+  );
+}
+
+function ProposalExcelPreviewCard({
+  preview,
+  confirming,
+  onCancel,
+  onConfirm,
+}: {
+  preview: ProposalExcelPreview;
+  confirming: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const currency = (value: number | null) =>
+    value === null
+      ? "Não disponível"
+      : new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format(value);
+  const number = (value: number | null, unit = "") =>
+    value === null
+      ? "Não disponível"
+      : `${new Intl.NumberFormat("pt-BR", {
+          maximumFractionDigits: 2,
+        }).format(value)}${unit ? ` ${unit}` : ""}`;
+  const rows = [
+    ["Cliente", preview.client.name ?? "Não informado"],
+    ["Potência do sistema", number(preview.system.systemPowerKwp, "kWp")],
+    ["Módulos", `${number(preview.system.moduleQuantity)} × ${number(preview.system.modulePowerWp, "Wp")} — ${preview.system.moduleModel ?? "modelo não informado"}`],
+    ["Área necessária", number(preview.system.requiredAreaM2, "m²")],
+    ["Valor à vista", currency(preview.financial.cashAmount)],
+    ["Valor do investimento", currency(preview.financial.investmentAmount)],
+    ["Parcelamento", `${number(preview.financial.installments)} × ${currency(preview.financial.installmentAmount)}`],
+    ["Materiais elétricos", currency(preview.financial.electricalMaterialsAmount)],
+    ["Mão de obra", currency(preview.financial.laborAmount)],
+    ["Geração mensal", number(preview.energy.monthlyGenerationKwh, "kWh")],
+    ["Geração anual", number(preview.energy.annualGenerationKwh, "kWh")],
+  ];
+  return (
+    <section className="rounded-2xl border border-orange-500/25 bg-orange-500/5 p-6">
+      <h3 className="text-lg font-bold text-white">
+        Resumo da proposta importada
+      </h3>
+      <p className="mt-1 text-sm text-zinc-400">{preview.source.fileName}</p>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {rows.map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-white/10 bg-black/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {label}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-zinc-100">{value}</p>
+          </div>
+        ))}
+      </div>
+      {preview.system.inverters.length > 0 && (
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Inversores
+          </p>
+          <div className="mt-2 space-y-2">
+            {preview.system.inverters.map((inverter, index) => (
+              <p key={`${inverter.model}-${index}`} className="text-sm text-zinc-200">
+                {inverter.quantity} × {inverter.model ?? "modelo não informado"} — {number(inverter.power)}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+      {preview.warnings.length > 0 && (
+        <div className="mt-5 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4">
+          <p className="font-semibold text-amber-300">Avisos de leitura</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-200/80">
+            {preview.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="mt-6 flex flex-wrap justify-end gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={confirming}
+          className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={confirming || !preview.financial.cashAmount}
+          className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+        >
+          {confirming ? "Atualizando..." : "Confirmar e atualizar oportunidade"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function LeadFiles({ lead }: Props) {
 
   const router = useRouter();

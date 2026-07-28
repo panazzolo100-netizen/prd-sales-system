@@ -78,6 +78,7 @@ export async function uploadCompanyLeadFile(data: {
   mimeType: string;
   size: number;
   buffer: Buffer;
+  kind?: "PROPOSAL_INTERNAL" | "PROPOSAL_CLIENT";
 }) {
   const user = await getCurrentAppUser();
   const lead = await findLeadById(data.leadId, user.companyId);
@@ -85,10 +86,53 @@ export async function uploadCompanyLeadFile(data: {
   if (!(LEAD_FILE_ALLOWED_MIME_TYPES as readonly string[]).includes(data.mimeType)) {
     throw new PrivateStorageError("FILE_TYPE_NOT_ALLOWED", "O tipo do arquivo não é permitido.");
   }
+  const proposalMimeTypes = {
+    PROPOSAL_INTERNAL: [
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ],
+    PROPOSAL_CLIENT: ["application/pdf"],
+  } as const;
+  if (
+    data.kind &&
+    !(proposalMimeTypes[data.kind] as readonly string[]).includes(data.mimeType)
+  ) {
+    throw new PrivateStorageError(
+      "FILE_TYPE_NOT_ALLOWED",
+      data.kind === "PROPOSAL_INTERNAL"
+        ? "A proposta interna deve ser um arquivo Excel (.xls ou .xlsx)."
+        : "A proposta do cliente deve ser um arquivo PDF."
+      );
+  }
+  if (data.kind === "PROPOSAL_CLIENT") {
+    const pdfSignature = data.buffer.subarray(0, 5).toString("ascii");
+    if (pdfSignature !== "%PDF-") {
+      throw new PrivateStorageError(
+        "INVALID_FILE",
+        "O conteúdo enviado não corresponde a um arquivo PDF válido."
+      );
+    }
+  }
+  if (data.kind === "PROPOSAL_INTERNAL") {
+    const isLegacyExcel =
+      data.buffer.length >= 8 &&
+      data.buffer.subarray(0, 8).equals(
+        Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
+      );
+    const isOpenXmlExcel =
+      data.buffer.length >= 4 &&
+      data.buffer.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+    if (!isLegacyExcel && !isOpenXmlExcel) {
+      throw new PrivateStorageError(
+        "INVALID_FILE",
+        "O conteúdo enviado não corresponde a um arquivo Excel válido."
+      );
+    }
+  }
 
   const storedFile = await uploadPrivateFile({
     companyId: user.companyId,
-    scope: "lead-file",
+    scope: data.kind === "PROPOSAL_INTERNAL" ? "proposal-internal" : "lead-file",
     entityId: data.leadId,
     originalName: data.name,
     mimeType: data.mimeType,

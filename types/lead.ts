@@ -39,7 +39,11 @@ export type LeadProposalItem = {
   amount: number;
   status: string;
   validUntil: Date | null;
+  paymentTerms: string | null;
+  executionDeadline: string | null;
+  commercialNotes: string | null;
   createdAt: Date;
+  updatedAt: Date;
   systemPower: number | null;
   monthlySaving: number | null;
   annualSaving: number | null;

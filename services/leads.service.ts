@@ -1,4 +1,5 @@
 import { LeadStatus } from "@/lib/generated/prisma/enums";
+import { notifyPipelineStageChange } from "@/services/pipeline-email.service";
 import { isServiceType, sanitizeServiceDetails } from "@/lib/opportunity-service-types";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { requirePermission, requireRole } from "@/services/auth.service";
@@ -194,6 +195,32 @@ export async function updateCompanyLead(
       notes:
         "O registro financeiro da venda foi criado automaticamente.",
     });
+  }
+
+  if (
+    data.status &&
+    data.status !== currentLead.status &&
+    (
+      [LeadStatus.PROPOSTA, LeadStatus.GANHO, LeadStatus.PERDIDO] as LeadStatus[]
+    ).includes(data.status)
+  ) {
+    try {
+      await notifyPipelineStageChange({
+        previousStatus: currentLead.status,
+        newStatus: data.status,
+        opportunityName: currentLead.companyName,
+        companyName: currentLead.companyName,
+        estimatedValue: lead.estimatedValue,
+        proposalAmount: currentLead.proposal?.amount ?? null,
+        ownerName: currentLead.owner?.name ?? null,
+        movedByName: user.name,
+      });
+    } catch (error) {
+      console.error(
+        "A etapa do Lead foi atualizada, mas o e-mail de Pipeline falhou.",
+        error
+      );
+    }
   }
 
   return lead;

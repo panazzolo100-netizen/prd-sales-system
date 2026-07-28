@@ -4,6 +4,7 @@ export type StorageScope =
   | "service-order-photo"
   | "service-order-signature"
   | "lead-file"
+  | "proposal-internal"
   | "financial-attachment"
   | "branding";
 
