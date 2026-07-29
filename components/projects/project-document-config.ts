@@ -1,15 +1,11 @@
 import type { ProjectDocumentItem } from "@/types/project";
 
 export const PROJECT_DOCUMENT_CATEGORIES = [
-  { value: "CONTRATO", label: "Contrato" },
-  { value: "ART", label: "ART" },
-  { value: "PROJETO", label: "Projeto" },
-  { value: "MEMORIAL", label: "Memorial" },
-  { value: "NOTA_FISCAL", label: "Nota Fiscal" },
-  { value: "FOTOS", label: "Fotos" },
-  { value: "GARANTIA", label: "Garantia" },
-  { value: "MANUAL", label: "Manual" },
-  { value: "OUTRO", label: "Outros" },
+  { value: "UNIFILAR", label: "Projeto Unifilar" },
+  { value: "TRIFILAR", label: "Projeto Trifilar" },
+  { value: "PLANTA_BAIXA", label: "Planta Baixa" },
+  { value: "CARTA_APROVACAO", label: "Carta de Aprovação" },
+  { value: "OUTROS_TECNICOS", label: "Outros Arquivos" },
 ] as const;
 
 export type ProjectDocumentCategory =

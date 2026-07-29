@@ -39,13 +39,36 @@ enum ServiceOrderPhotoCategory {
 
 enum ProjectDocumentType {
   CONTRATO
+
   ART
+  TRT
+
   PROJETO
+  PROJETO_AUTOCAD
+  PROJETO_DXF
+  PROJETO_EXECUTIVO
+  PROJETO_APROVADO
+  AS_BUILT
+
+  // NOVOS
+  PROJECT_UNIFILAR
+  PROJECT_TRIFILAR
+  PLANTA_BAIXA
+  CARTA_APROVACAO
+  OUTROS_TECNICOS
+
   MEMORIAL
+  LISTA_MATERIAIS
+  DIAGRAMA
+
   NOTA_FISCAL
+
   FOTOS
+  DRONE
+
   GARANTIA
   MANUAL
+
   OUTRO
 
   @@schema("crm")
@@ -439,6 +462,166 @@ model Project {
 
   agendaEvents AgendaEvent[]
 
+  technicalSpecification ProjectTechnicalSpecification?
+  engineeringEquipments  EngineeringEquipment[]
+  engineeringMaterials   EngineeringMaterial[]
+  engineeringCoordinates EngineeringCoordinate[]
+  engineeringStrings     EngineeringString[]
+
+  @@schema("crm")
+}
+
+model ProjectTechnicalSpecification {
+  id String @id @default(cuid())
+
+  systemType       String?
+  installedPower   Float?
+  connectionPower  Float?
+  generationTarget Float?
+
+  distributor       String?
+  consumerUnit      String?
+  tariffGroup       String?
+  consumerClass     String?
+  contractedDemand  Float?
+  measuredDemand    Float?
+  voltage            String?
+  phase              String?
+  connectionStandard String?
+
+  installationAddress String?
+  city                String?
+  state               String?
+
+  roofType        String?
+  roofArea        Float?
+  roofOrientation String?
+  roofSlope       Float?
+  shading         String?
+  structureType   String?
+
+  technicalNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String  @unique
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@schema("crm")
+}
+
+model EngineeringEquipment {
+  id String @id @default(cuid())
+
+  type         String
+  manufacturer String?
+  model        String?
+  description  String?
+
+  quantity Int   @default(1)
+  power    Float?
+  unit     String?
+
+  voltage     Float?
+  current     Float?
+  mppt        Int?
+  efficiency  Float?
+  dimensions  String?
+  weight      Float?
+
+  technicalData Json?
+  notes         String?
+  position      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, type])
+  @@index([projectId, position])
+  @@schema("crm")
+}
+
+model EngineeringMaterial {
+  id String @id @default(cuid())
+
+  category     String
+  description  String
+  manufacturer String?
+  model        String?
+
+  quantity Float
+  unit     String
+
+  specification String?
+  notes         String?
+  position      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, category])
+  @@index([projectId, position])
+  @@schema("crm")
+}
+
+model EngineeringCoordinate {
+  id String @id @default(cuid())
+
+  type        String
+  name        String
+  latitude    Float
+  longitude   Float
+  description String?
+
+  elevation Float?
+  reference String?
+  position  Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, type])
+  @@index([projectId, position])
+  @@schema("crm")
+}
+
+model EngineeringString {
+  id String @id @default(cuid())
+
+  name           String
+  mppt           String?
+  moduleQuantity Int
+  orientation    String?
+  tilt           Float?
+  azimuth        Float?
+  notes          String?
+  position       Int @default(0)
+
+  equipmentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, position])
+  @@index([equipmentId])
   @@schema("crm")
 }
 

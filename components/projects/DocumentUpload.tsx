@@ -12,7 +12,7 @@ import type { ProjectDocumentItem } from "@/types/project";
 
 type Props = {
   projectId: string;
-  type?: ProjectDocumentCategory;
+  initialType?: ProjectDocumentCategory;
   title?: string;
   onUploaded?: (document: ProjectDocumentItem) => void;
   onCancel?: () => void;
@@ -20,7 +20,7 @@ type Props = {
 
 export function DocumentUpload({
   projectId,
-  type: initialType = "OUTRO",
+  initialType = "OUTROS_TECNICOS",
   title,
   onUploaded,
   onCancel,

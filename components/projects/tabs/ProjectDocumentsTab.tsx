@@ -66,7 +66,7 @@ export function ProjectDocumentsTab({
     useState<DocumentCategoryFilter>("TODOS");
   const [sort, setSort] = useState<DocumentSort>("RECENT");
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadCategory, setUploadCategory] = useState<ProjectDocumentCategory>("OUTRO");
+  const [uploadCategory, setUploadCategory] = useState<ProjectDocumentCategory>("OUTROS_TECNICOS");
   const [previewDocument, setPreviewDocument] =
     useState<ProjectDocumentItem | null>(null);
   const [favoriteLoadingId, setFavoriteLoadingId] =
@@ -189,11 +189,11 @@ export function ProjectDocumentsTab({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-500">
-              Centro de documentos
-            </p>
-            <h2 className="mt-2 text-2xl font-black text-white">
-              Documentos do Projeto
-            </h2>
+  Arquivos Técnicos
+</p>
+           <h2 className="mt-2 text-2xl font-black text-white">
+  Documentação Técnica
+</h2>
             <p className="mt-2 text-sm text-zinc-500">
               {documents.length} documento(s) · {favoriteCount} favorito(s)
             </p>
@@ -201,7 +201,7 @@ export function ProjectDocumentsTab({
 
           <button
             type="button"
-            onClick={() => { setUploadCategory("OUTRO"); setShowUpload(true); }}
+            onClick={() => { setUploadCategory("OUTROS_TECNICOS"); setShowUpload(true); }}
             className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-400"
           >
             <Upload size={17} />
@@ -210,8 +210,63 @@ export function ProjectDocumentsTab({
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
-          {PROJECT_DOCUMENT_CATEGORIES.map((item) => <button key={item.value} type="button" onClick={() => { setUploadCategory(item.value); setShowUpload(true); }} className="rounded-lg border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 transition hover:border-orange-500/30 hover:text-orange-400">{item.label}</button>)}
-        </div>
+
+  <button
+    type="button"
+    onClick={() => {
+      setUploadCategory("UNIFILAR");
+      setShowUpload(true);
+    }}
+    className="rounded-lg border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 hover:border-orange-500/30 hover:text-orange-400"
+  >
+    📄 Projeto Unifilar
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      setUploadCategory("TRIFILAR");
+      setShowUpload(true);
+    }}
+    className="rounded-lg border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 hover:border-orange-500/30 hover:text-orange-400"
+  >
+    ⚡ Projeto Trifilar
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      setUploadCategory("PLANTA_BAIXA");
+      setShowUpload(true);
+    }}
+    className="rounded-lg border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 hover:border-orange-500/30 hover:text-orange-400"
+  >
+    📐 Planta Baixa
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      setUploadCategory("CARTA_APROVACAO");
+      setShowUpload(true);
+    }}
+    className="rounded-lg border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 hover:border-orange-500/30 hover:text-orange-400"
+  >
+    📋 Carta de Aprovação
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      setUploadCategory("OUTROS_TECNICOS");
+      setShowUpload(true);
+    }}
+    className="rounded-lg border border-white/[0.08] bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 hover:border-orange-500/30 hover:text-orange-400"
+  >
+    📁 Outros Arquivos
+  </button>
+
+</div>
 
         <div className="mt-6 grid gap-3 lg:grid-cols-[minmax(240px,1fr)_210px_190px]">
           <div className="relative">
@@ -259,7 +314,13 @@ export function ProjectDocumentsTab({
 
       {showUpload && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowUpload(false); }}>
-          <div className="w-full max-w-3xl"><DocumentUpload key={uploadCategory} projectId={projectId} type={uploadCategory} onUploaded={handleUploaded} onCancel={() => setShowUpload(false)} /></div>
+          <div className="w-full max-w-3xl"><DocumentUpload
+  key={uploadCategory}
+  projectId={projectId}
+  initialType={uploadCategory}
+  onUploaded={handleUploaded}
+  onCancel={() => setShowUpload(false)}
+/></div>
         </div>
       )}
 

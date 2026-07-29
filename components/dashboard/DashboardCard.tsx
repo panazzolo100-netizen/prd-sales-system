@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/Card";
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 
 type Props = {
@@ -6,6 +7,7 @@ type Props = {
   valor: string | number;
   cor?: string;
   crescimento?: string;
+  href?: string;
 };
 
 export function DashboardCard({
@@ -13,8 +15,9 @@ export function DashboardCard({
   valor,
   cor = "text-orange-500",
   crescimento,
+  href,
 }: Props) {
-  return (
+  const content = (
     <Card className="transition-all duration-300 hover:scale-[1.02] hover:border-orange-500">
       <div className="flex items-start justify-between">
         <div>
@@ -35,4 +38,10 @@ export function DashboardCard({
       </div>
     </Card>
   );
+
+  if (href) {
+    return <Link href={href} className="block cursor-pointer">{content}</Link>;
+  }
+
+  return content;
 }

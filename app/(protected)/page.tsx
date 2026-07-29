@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
@@ -62,10 +63,10 @@ export default async function Dashboard() {
               Acompanhe oportunidades, propostas e o pipeline comercial.
             </p>
             <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <HeroIndicator icon={Target} label="Oportunidades" value={String(data.totalLeads)} description={`${data.propostas} em proposta`} iconClass="bg-orange-500/15 text-orange-400" />
-              <HeroIndicator icon={Users} label="Clientes" value={String(data.totalClientes)} description="Clientes ativos" iconClass="bg-emerald-500/15 text-emerald-400" />
-              <HeroIndicator icon={FileText} label="Propostas" value={String(data.propostas)} description="Oportunidades em proposta" iconClass="bg-blue-500/15 text-blue-400" />
-              <HeroIndicator icon={TrendingUp} label="Conversão" value={`${data.conversao}%`} description={`${data.ganhos} oportunidade(s) ganha(s)`} iconClass="bg-violet-500/15 text-violet-400" />
+              <HeroIndicator href="/leads" icon={Target} label="Oportunidades" value={String(data.totalLeads)} description={`${data.propostas} em proposta`} iconClass="bg-orange-500/15 text-orange-400" />
+              <HeroIndicator href="/clientes" icon={Users} label="Clientes" value={String(data.totalClientes)} description="Clientes ativos" iconClass="bg-emerald-500/15 text-emerald-400" />
+              <HeroIndicator href="/propostas" icon={FileText} label="Propostas" value={String(data.propostas)} description="Oportunidades em proposta" iconClass="bg-blue-500/15 text-blue-400" />
+              <HeroIndicator href="/pipeline" icon={TrendingUp} label="Conversão" value={`${data.conversao}%`} description={`${data.ganhos} oportunidade(s) ganha(s)`} iconClass="bg-violet-500/15 text-violet-400" />
             </div>
           </section>
           <section className="grid gap-6 xl:grid-cols-3">
@@ -117,6 +118,7 @@ export default async function Dashboard() {
 
           <div className="relative mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <HeroIndicator
+              href="/leads"
               icon={Target}
               label="Oportunidades"
               value={String(data.totalLeads)}
@@ -125,6 +127,7 @@ export default async function Dashboard() {
             />
 
             <HeroIndicator
+              href="/projetos"
               icon={BriefcaseBusiness}
               label="Projetos ativos"
               value={String(data.projetosAndamento)}
@@ -133,6 +136,7 @@ export default async function Dashboard() {
             />
 
             <HeroIndicator
+              href="/os"
               icon={ClipboardList}
               label="OS em aberto"
               value={String(data.ordensServico)}
@@ -145,6 +149,7 @@ export default async function Dashboard() {
             />
 
             <HeroIndicator
+              href="/financeiro"
               icon={CircleDollarSign}
               label="Valor pendente"
               value={moeda(data.totalPendente)}
@@ -162,6 +167,7 @@ export default async function Dashboard() {
 
           <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
+              href="/leads"
               icon={Target}
               label="Leads"
               value={String(data.totalLeads)}
@@ -170,6 +176,7 @@ export default async function Dashboard() {
             />
 
             <MetricCard
+              href="/clientes"
               icon={Users}
               label="Clientes"
               value={String(data.totalClientes)}
@@ -178,6 +185,7 @@ export default async function Dashboard() {
             />
 
             <MetricCard
+              href="/projetos"
               icon={BriefcaseBusiness}
               label="Projetos"
               value={String(data.projetos)}
@@ -186,6 +194,7 @@ export default async function Dashboard() {
             />
 
             <MetricCard
+              href="/pipeline"
               icon={TrendingUp}
               label="Conversão"
               value={`${data.conversao}%`}
@@ -194,6 +203,7 @@ export default async function Dashboard() {
             />
 
             <MetricCard
+              href="/os"
               icon={ClipboardList}
               label="OS abertas"
               value={String(data.ordensServico)}
@@ -202,6 +212,7 @@ export default async function Dashboard() {
             />
 
             <MetricCard
+              href="/os"
               icon={CheckCircle2}
               label="OS concluídas"
               value={String(data.ordensConcluidas)}
@@ -210,6 +221,7 @@ export default async function Dashboard() {
             />
 
             <MetricCard
+              href="/os"
               icon={AlertTriangle}
               label="OS atrasadas"
               value={String(data.ordensAtrasadas)}
@@ -226,6 +238,7 @@ export default async function Dashboard() {
             />
 
             <MetricCard
+              href="/projetos"
               icon={FileText}
               label="Documentos"
               value={String(data.documentos)}
@@ -243,6 +256,7 @@ export default async function Dashboard() {
 
           <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <FinancialCard
+              href="/financeiro"
               label="Total vendido"
               value={moeda(data.totalVendido)}
               description="Valor total dos projetos"
@@ -250,6 +264,7 @@ export default async function Dashboard() {
             />
 
             <FinancialCard
+              href="/financeiro"
               label="Total recebido"
               value={moeda(data.totalRecebido)}
               description={`${data.percentualRecebido}% do total vendido`}
@@ -257,6 +272,7 @@ export default async function Dashboard() {
             />
 
             <FinancialCard
+              href="/financeiro"
               label="Total pendente"
               value={moeda(data.totalPendente)}
               description="Valores ainda não recebidos"
@@ -264,6 +280,7 @@ export default async function Dashboard() {
             />
 
             <FinancialCard
+              href="/financeiro"
               label="Margem estimada"
               value={`${data.margem}%`}
               description={`Custos: ${moeda(data.totalCustos)}`}
@@ -405,12 +422,14 @@ export default async function Dashboard() {
 }
 
 function HeroIndicator({
+  href,
   icon: Icon,
   label,
   value,
   description,
   iconClass,
 }: {
+  href: string;
   icon: typeof Target;
   label: string;
   value: string;
@@ -418,11 +437,21 @@ function HeroIndicator({
   iconClass: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] p-5 backdrop-blur-sm">
-      <div
-        className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconClass}`}
-      >
-        <Icon size={20} />
+    <Link
+      href={href}
+      className="group block rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] p-5 backdrop-blur-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/30 hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/60"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconClass}`}
+        >
+          <Icon size={20} />
+        </div>
+
+        <ArrowRight
+          size={16}
+          className="text-[var(--muted)] transition group-hover:translate-x-1 group-hover:text-orange-400"
+        />
       </div>
 
       <p className="mt-5 text-sm font-medium text-[var(--muted)]">
@@ -436,17 +465,19 @@ function HeroIndicator({
       <p className="mt-2 text-xs text-[var(--muted)]">
         {description}
       </p>
-    </div>
+    </Link>
   );
 }
 
 function MetricCard({
+  href,
   icon: Icon,
   label,
   value,
   detail,
   iconClass,
 }: {
+  href: string;
   icon: typeof Target;
   label: string;
   value: string;
@@ -454,7 +485,10 @@ function MetricCard({
   iconClass: string;
 }) {
   return (
-    <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/25 hover:bg-[var(--surface-raised)]">
+    <Link
+      href={href}
+      className="group block rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/25 hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/60"
+    >
       <div className="flex items-start justify-between gap-4">
         <div
           className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconClass}`}
@@ -464,7 +498,7 @@ function MetricCard({
 
         <ArrowRight
           size={17}
-          className="text-[var(--muted)] transition group-hover:translate-x-1 group-hover:text-[var(--muted)]"
+          className="text-[var(--muted)] transition group-hover:translate-x-1 group-hover:text-orange-400"
         />
       </div>
 
@@ -479,26 +513,38 @@ function MetricCard({
       <p className="mt-1 text-xs text-[var(--muted)]">
         {detail}
       </p>
-    </div>
+    </Link>
   );
 }
 
 function FinancialCard({
+  href,
   label,
   value,
   description,
   valueClass,
 }: {
+  href: string;
   label: string;
   value: string;
   description: string;
   valueClass: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
-      <p className="text-sm font-medium text-[var(--muted)]">
-        {label}
-      </p>
+    <Link
+      href={href}
+      className="group block rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 transition duration-200 hover:-translate-y-0.5 hover:border-orange-500/25 hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/60"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm font-medium text-[var(--muted)]">
+          {label}
+        </p>
+
+        <ArrowRight
+          size={17}
+          className="text-[var(--muted)] transition group-hover:translate-x-1 group-hover:text-orange-400"
+        />
+      </div>
 
       <h2
         className={`mt-3 break-words text-2xl font-black ${valueClass}`}
@@ -509,7 +555,7 @@ function FinancialCard({
       <p className="mt-3 text-xs text-[var(--muted)]">
         {description}
       </p>
-    </div>
+    </Link>
   );
 }
 

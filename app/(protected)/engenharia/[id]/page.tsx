@@ -1,5 +1,6 @@
 import { EngineeringProjectDocuments } from "@/components/engineering/EngineeringProjectDocuments";
 import { EngineeringTechnicalDetails } from "@/components/engineering/EngineeringTechnicalDetails";
+import { EngineeringEquipmentManager } from "@/components/engineering/EngineeringEquipmentManager";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -306,6 +307,11 @@ export default async function ProjetoPage({
         <EngineeringTechnicalDetails
           serviceType={projeto.resolvedServiceType}
           details={projeto.serviceDetails}
+        />
+
+        <EngineeringEquipmentManager
+          projectId={projeto.id}
+          initialEquipments={projeto.engineeringEquipments}
         />
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
