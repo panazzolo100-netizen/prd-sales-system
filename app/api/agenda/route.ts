@@ -1,15 +1,98 @@
 import { NextResponse } from "next/server";
 
-import { deleteCompanyAgendaItem } from "@/services/agenda.service";
+import {
+  createCompanyAgendaEvent,
+  deleteCompanyAgendaItem,
+  getAgendaData,
+  updateCompanyAgendaEvent,
+} from "@/services/agenda.service";
 
-export async function DELETE(request: Request) {
+function errorResponse(
+  error: unknown,
+  fallback: string
+) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : fallback;
+
+  return NextResponse.json(
+    {
+      error: message,
+    },
+    {
+      status:
+        message.includes("não encontrado")
+          ? 404
+          : message.includes("obrigatório") ||
+              message.includes("inválid") ||
+              message.includes("anterior")
+            ? 400
+            : 500,
+    }
+  );
+}
+
+export async function GET() {
   try {
-    const id = new URL(request.url).searchParams.get("id")?.trim();
+    return NextResponse.json(
+      await getAgendaData()
+    );
+  } catch (error) {
+    return errorResponse(
+      error,
+      "Erro ao carregar agenda."
+    );
+  }
+}
+
+export async function POST(
+  request: Request
+) {
+  try {
+    const body =
+      (await request.json()) as Record<
+        string,
+        unknown
+      >;
+
+    const event =
+      await createCompanyAgendaEvent(
+        body
+      );
+
+    return NextResponse.json(
+      event,
+      {
+        status: 201,
+      }
+    );
+  } catch (error) {
+    return errorResponse(
+      error,
+      "Erro ao criar evento."
+    );
+  }
+}
+
+export async function PATCH(
+  request: Request
+) {
+  try {
+    const body =
+      (await request.json()) as Record<
+        string,
+        unknown
+      >;
+
+    const id = String(
+      body.id ?? ""
+    ).trim();
 
     if (!id) {
       return NextResponse.json(
         {
-          error: "Agendamento obrigatório.",
+          error: "Evento obrigatório.",
         },
         {
           status: 400,
@@ -17,26 +100,49 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteCompanyAgendaItem(id);
+    const event =
+      await updateCompanyAgendaEvent(
+        id,
+        body
+      );
 
-    return NextResponse.json({
-      success: true,
-    });
+    return NextResponse.json(event);
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao remover agendamento.";
+    return errorResponse(
+      error,
+      "Erro ao atualizar evento."
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request
+) {
+  try {
+    const id = new URL(
+      request.url
+    ).searchParams
+      .get("id")
+      ?.trim();
+
+    if (!id) {
+      return NextResponse.json(
+        {
+          error: "Evento obrigatório.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     return NextResponse.json(
-      {
-        error: message,
-      },
-      {
-        status: message.includes("não encontrado")
-          ? 404
-          : 500,
-      }
+      await deleteCompanyAgendaItem(id)
+    );
+  } catch (error) {
+    return errorResponse(
+      error,
+      "Erro ao excluir evento."
     );
   }
 }
