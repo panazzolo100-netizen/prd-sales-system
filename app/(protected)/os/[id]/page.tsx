@@ -13,6 +13,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ChecklistItem } from "@/components/os/ChecklistItem";
 import { ChecklistSaveStatus } from "@/components/os/ChecklistSaveStatus";
 import { PhotoUpload } from "@/components/os/PhotoUpload";
+import { DeleteServiceOrderButton } from "@/components/os/DeleteServiceOrderButton";
 
 type Props = {
   params: Promise<{
@@ -260,23 +261,28 @@ export default async function ServiceOrderPage({
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-  <a
-    href={`/api/os/${ordem.id}/pdf`}
-    target="_blank"
-    rel="noreferrer"
-    className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600"
-  >
-    Gerar PDF
-  </a>
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href={`/api/os/${ordem.id}/pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600"
+              >
+                Gerar PDF
+              </a>
 
-  <Link
-    href="/os"
-    className="rounded-xl border border-zinc-700 px-5 py-3 font-bold text-white transition hover:border-zinc-600 hover:bg-zinc-800"
-  >
-    Voltar
-  </Link>
-</div>
+              <DeleteServiceOrderButton
+                serviceOrderId={ordem.id}
+                serviceOrderNumber={ordem.number}
+              />
+
+              <Link
+                href="/os"
+                className="rounded-xl border border-zinc-700 px-5 py-3 font-bold text-white transition hover:border-zinc-600 hover:bg-zinc-800"
+              >
+                Voltar
+              </Link>
+            </div>
           </div>
 
           <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
