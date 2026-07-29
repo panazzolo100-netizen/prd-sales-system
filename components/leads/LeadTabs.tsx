@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, Plus } from "lucide-react";
+import { Upload, Plus, Trash2 } from "lucide-react";
 
 import { LeadDimensioning } from "@/components/leads/LeadDimensioning";
 import { LeadHistory } from "@/components/leads/LeadHistory";
@@ -762,6 +762,7 @@ function LeadProposals({ lead, onLeadChange }: Props) {
   );
 
   const [saving,setSaving] = useState(false);
+  const [deletingProposal, setDeletingProposal] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [status, setStatus] = useState(lead.proposal?.status ?? "RASCUNHO");
@@ -868,6 +869,55 @@ async function createProposal() {
     );
   } finally {
     setSaving(false);
+  }
+}
+
+async function removeProposal() {
+  if (!proposal || deletingProposal) return;
+
+  const confirmed = window.confirm(
+    "Deseja excluir esta proposta? Esta ação não poderá ser desfeita."
+  );
+
+  if (!confirmed) return;
+
+  setDeletingProposal(true);
+  setSaveError(null);
+  setSaveSuccess(null);
+
+  try {
+    const response = await fetch(
+      `/api/proposals?id=${encodeURIComponent(proposal.id)}`,
+      { method: "DELETE" }
+    );
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error ?? "Não foi possível excluir a proposta.");
+    }
+
+    onLeadChange?.({
+      ...lead,
+      proposal: null,
+      estimatedValue: null,
+    });
+    setEditing(true);
+    setTitle("");
+    setAmount("");
+    setStatus("RASCUNHO");
+    setValidUntil("");
+    setPaymentTerms("");
+    setExecutionDeadline("");
+    setCommercialNotes("");
+    setSaveSuccess("Proposta excluída com sucesso.");
+  } catch (error) {
+    setSaveError(
+      error instanceof Error
+        ? error.message
+        : "Não foi possível excluir a proposta."
+    );
+  } finally {
+    setDeletingProposal(false);
   }
 }
 
@@ -1302,10 +1352,21 @@ function generatePdf() {
   <button
   type="button"
   onClick={generatePdf}
-  className="rounded-xl bg-green-600 px-5 py-3 font-bold text-white hover:bg-green-700"
+  disabled={deletingProposal}
+  className="rounded-xl bg-green-600 px-5 py-3 font-bold text-white hover:bg-green-700 disabled:opacity-50"
 >
   Gerar PDF
 </button>
+
+  <button
+    type="button"
+    onClick={() => void removeProposal()}
+    disabled={saving || deletingProposal}
+    className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-3 font-bold text-red-400 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <Trash2 size={18} />
+    {deletingProposal ? "Excluindo..." : "Excluir proposta"}
+  </button>
 
   </div>
 
@@ -1841,6 +1902,7 @@ function projectDocumentCategoryLabel(type: ProjectDocumentCategory) {
 }
 
 function LeadFiles({ lead, onLeadChange }: Props) {
+  const router = useRouter();
   const [category, setCategory] =
     useState<ProjectDocumentCategory>("CONTRATO");
   const [observation, setObservation] = useState("");
@@ -1925,6 +1987,8 @@ function LeadFiles({ lead, onLeadChange }: Props) {
           savedDocument as LeadProjectDocument,
           ...current.filter((document) => document.id !== savedDocument.id),
         ]);
+        await loadProjectDocuments();
+        router.refresh();
         setFileMessage(
           "Documento enviado e confirmado automaticamente na Engenharia."
         );
@@ -2014,6 +2078,7 @@ function LeadFiles({ lead, onLeadChange }: Props) {
       setProjectDocuments((current) =>
         current.filter((document) => document.id !== id)
       );
+      router.refresh();
       setFileMessage("Documento removido com sucesso.");
     } catch (error) {
       setFileMessage(
