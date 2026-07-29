@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { ProjectDocumentType } from "@/lib/generated/prisma/enums";
 
 type CreateProjectDocumentData = {
-  projectId: string;
+  projectId?: string | null;
+  leadId?: string | null;
   name: string;
   url: string;
   mimeType: string;
@@ -12,12 +13,28 @@ type CreateProjectDocumentData = {
   notes?: string | null;
 };
 
+const documentInclude = {
+  uploadedBy: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+} as const;
+
 export async function createProjectDocument(
   data: CreateProjectDocumentData
 ) {
+  if (!data.projectId && !data.leadId) {
+    throw new Error(
+      "O documento precisa estar vinculado a uma oportunidade ou projeto."
+    );
+  }
+
   return prisma.projectDocument.create({
     data: {
-      projectId: data.projectId,
+      projectId: data.projectId ?? null,
+      leadId: data.leadId ?? null,
       name: data.name,
       url: data.url,
       mimeType: data.mimeType,
@@ -26,14 +43,7 @@ export async function createProjectDocument(
       uploadedById: data.uploadedById ?? null,
       notes: data.notes ?? null,
     },
-    include: {
-      uploadedBy: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
+    include: documentInclude,
   });
 }
 
@@ -44,19 +54,32 @@ export async function findProjectDocuments(
   return prisma.projectDocument.findMany({
     where: {
       projectId,
-      project: { companyId },
+      project: {
+        companyId,
+      },
     },
     orderBy: {
       createdAt: "desc",
     },
-    include: {
-      uploadedBy: {
-        select: {
-          id: true,
-          name: true,
-        },
+    include: documentInclude,
+  });
+}
+
+export async function findLeadProjectDocuments(
+  leadId: string,
+  companyId: string
+) {
+  return prisma.projectDocument.findMany({
+    where: {
+      leadId,
+      lead: {
+        companyId,
       },
     },
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: documentInclude,
   });
 }
 
@@ -87,10 +110,20 @@ export async function findCompanyProjectDocumentById(
   return prisma.projectDocument.findFirst({
     where: {
       id,
-      project: {
-        companyId,
-      },
+      OR: [
+        {
+          project: {
+            companyId,
+          },
+        },
+        {
+          lead: {
+            companyId,
+          },
+        },
+      ],
     },
+    include: documentInclude,
   });
 }
 
@@ -105,6 +138,54 @@ export async function findCompanyProjectForDocuments(
     },
     select: {
       id: true,
+      client: {
+        select: {
+          leadId: true,
+        },
+      },
+    },
+  });
+}
+
+export async function findCompanyLeadForDocuments(
+  leadId: string,
+  companyId: string
+) {
+  return prisma.lead.findFirst({
+    where: {
+      id: leadId,
+      companyId,
+    },
+    select: {
+      id: true,
+      client: {
+        select: {
+          projects: {
+            select: {
+              id: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function linkLeadDocumentsToProject(
+  leadId: string,
+  projectId: string
+) {
+  return prisma.projectDocument.updateMany({
+    where: {
+      leadId,
+      projectId: null,
+    },
+    data: {
+      projectId,
     },
   });
 }
@@ -114,15 +195,12 @@ export async function updateProjectDocumentFavorite(
   isFavorite: boolean
 ) {
   return prisma.projectDocument.update({
-    where: { id },
-    data: { isFavorite },
-    include: {
-      uploadedBy: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
+    where: {
+      id,
     },
+    data: {
+      isFavorite,
+    },
+    include: documentInclude,
   });
 }

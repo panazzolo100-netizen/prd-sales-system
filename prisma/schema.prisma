@@ -188,6 +188,8 @@ model Lead {
 
   files LeadFile[]
 
+  projectDocuments ProjectDocument[]
+
   engineering LeadEngineering?
 
   dimensioning LeadDimensioning?
@@ -652,10 +654,16 @@ model ProjectDocument {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  projectId String
+  leadId String?
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
+  projectId String?
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([leadId, type])
   @@index([projectId])
   @@index([projectId, type])
   @@index([uploadedById])

@@ -35,7 +35,8 @@ export type ProjectDocumentItem = {
   createdAt: Date | string;
   updatedAt: Date | string;
 
-  projectId: string;
+  projectId: string | null;
+leadId: string | null;
 };
 
 export type ProjectFinancial = {

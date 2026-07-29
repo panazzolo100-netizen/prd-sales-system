@@ -1787,15 +1787,113 @@ function ProposalExcelPreviewCard({
   );
 }
 
+type ProjectDocumentCategory =
+  | "CONTRATO"
+  | "ART"
+  | "PROJETO"
+  | "MEMORIAL"
+  | "NOTA_FISCAL"
+  | "FOTOS"
+  | "GARANTIA"
+  | "MANUAL"
+  | "OUTRO";
+
+type LeadProjectDocument = {
+  id: string;
+  projectId: string | null;
+  leadId: string | null;
+  name: string;
+  storageReference: string;
+  accessUrl: string | null;
+  mimeType: string;
+  size: number;
+  type: ProjectDocumentCategory;
+  notes: string | null;
+  isFavorite: boolean;
+  createdAt: Date | string;
+  uploadedBy: {
+    id: string;
+    name: string;
+  } | null;
+};
+
+const projectDocumentCategoryOptions: Array<{
+  value: ProjectDocumentCategory;
+  label: string;
+  technical: boolean;
+}> = [
+  { value: "CONTRATO", label: "Contrato", technical: true },
+  { value: "ART", label: "ART", technical: true },
+  { value: "PROJETO", label: "Projeto", technical: true },
+  { value: "MEMORIAL", label: "Memorial", technical: true },
+  { value: "NOTA_FISCAL", label: "Nota Fiscal", technical: true },
+  { value: "FOTOS", label: "Fotos", technical: true },
+  { value: "GARANTIA", label: "Garantia", technical: true },
+  { value: "MANUAL", label: "Manual", technical: true },
+  { value: "OUTRO", label: "Outros", technical: false },
+];
+
+function projectDocumentCategoryLabel(type: ProjectDocumentCategory) {
+  return (
+    projectDocumentCategoryOptions.find((option) => option.value === type)
+      ?.label ?? type.replaceAll("_", " ")
+  );
+}
+
 function LeadFiles({ lead, onLeadChange }: Props) {
+  const [category, setCategory] =
+    useState<ProjectDocumentCategory>("CONTRATO");
   const [observation, setObservation] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileMessage, setFileMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [loadingDocuments, setLoadingDocuments] = useState(true);
+  const [projectDocuments, setProjectDocuments] = useState<
+    LeadProjectDocument[]
+  >([]);
+
+  const selectedCategory = projectDocumentCategoryOptions.find(
+    (option) => option.value === category
+  );
+
+  const loadProjectDocuments = useCallback(async () => {
+    setLoadingDocuments(true);
+
+    try {
+      const response = await fetch(
+        `/api/projects/documents?leadId=${encodeURIComponent(lead.id)}`,
+        { cache: "no-store" }
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ?? "Erro ao carregar documentos da Engenharia."
+        );
+      }
+
+      setProjectDocuments(
+        Array.isArray(result) ? (result as LeadProjectDocument[]) : []
+      );
+    } catch (error) {
+      setFileMessage(
+        error instanceof Error
+          ? error.message
+          : "Erro ao carregar documentos da Engenharia."
+      );
+    } finally {
+      setLoadingDocuments(false);
+    }
+  }, [lead.id]);
+
+  useEffect(() => {
+    void loadProjectDocuments();
+  }, [loadProjectDocuments]);
 
   async function upload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     const normalizedObservation = observation.trim();
     if (!normalizedObservation || !selectedFile || uploading) return;
 
@@ -1804,28 +1902,57 @@ function LeadFiles({ lead, onLeadChange }: Props) {
 
     const formData = new FormData();
     formData.append("leadId", lead.id);
-    formData.append("observation", normalizedObservation);
     formData.append("file", selectedFile);
 
     try {
-      const response = await fetch("/api/leads/files", {
-        method: "POST",
-        body: formData,
-      });
-      const savedFile = await response.json();
-      if (!response.ok) {
-        throw new Error(savedFile.error ?? "Erro ao enviar arquivo.");
+      if (selectedCategory?.technical) {
+        formData.append("type", category);
+        formData.append("notes", normalizedObservation);
+
+        const response = await fetch("/api/projects/documents", {
+          method: "POST",
+          body: formData,
+        });
+        const savedDocument = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            savedDocument.error ?? "Erro ao enviar documento para Engenharia."
+          );
+        }
+
+        setProjectDocuments((current) => [
+          savedDocument as LeadProjectDocument,
+          ...current.filter((document) => document.id !== savedDocument.id),
+        ]);
+        setFileMessage(
+          "Documento enviado e confirmado automaticamente na Engenharia."
+        );
+      } else {
+        formData.append("observation", normalizedObservation);
+
+        const response = await fetch("/api/leads/files", {
+          method: "POST",
+          body: formData,
+        });
+        const savedFile = await response.json();
+
+        if (!response.ok) {
+          throw new Error(savedFile.error ?? "Erro ao enviar arquivo.");
+        }
+
+        onLeadChange?.({
+          ...lead,
+          files: [
+            savedFile,
+            ...(lead.files ?? []).filter((file) => file.id !== savedFile.id),
+          ],
+        });
+        setFileMessage("Arquivo enviado com sucesso.");
       }
-      onLeadChange?.({
-        ...lead,
-        files: [
-          savedFile,
-          ...(lead.files ?? []).filter((file) => file.id !== savedFile.id),
-        ],
-      });
+
       setObservation("");
       setSelectedFile(null);
-      setFileMessage("Arquivo enviado com sucesso.");
     } catch (error) {
       setFileMessage(
         error instanceof Error ? error.message : "Erro ao enviar arquivo."
@@ -1835,10 +1962,12 @@ function LeadFiles({ lead, onLeadChange }: Props) {
     }
   }
 
-  async function removeFile(id: string) {
+  async function removeLeadFile(id: string) {
     if (deletingId || !window.confirm("Deseja excluir este arquivo?")) return;
+
     setDeletingId(id);
     setFileMessage("");
+
     try {
       const response = await fetch("/api/leads/files", {
         method: "DELETE",
@@ -1846,9 +1975,11 @@ function LeadFiles({ lead, onLeadChange }: Props) {
         body: JSON.stringify({ id }),
       });
       const result = await response.json();
+
       if (!response.ok) {
         throw new Error(result.error ?? "Erro ao excluir arquivo.");
       }
+
       onLeadChange?.({
         ...lead,
         files: (lead.files ?? []).filter((file) => file.id !== id),
@@ -1863,12 +1994,68 @@ function LeadFiles({ lead, onLeadChange }: Props) {
     }
   }
 
+  async function removeProjectDocument(id: string) {
+    if (deletingId || !window.confirm("Deseja excluir este documento?")) return;
+
+    setDeletingId(id);
+    setFileMessage("");
+
+    try {
+      const response = await fetch(
+        `/api/projects/documents?id=${encodeURIComponent(id)}`,
+        { method: "DELETE" }
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Erro ao excluir documento.");
+      }
+
+      setProjectDocuments((current) =>
+        current.filter((document) => document.id !== id)
+      );
+      setFileMessage("Documento removido com sucesso.");
+    } catch (error) {
+      setFileMessage(
+        error instanceof Error ? error.message : "Erro ao excluir documento."
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <form
         onSubmit={upload}
         className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-5"
       >
+        <div>
+          <h3 className="text-lg font-bold text-white">Enviar documento</h3>
+          <p className="mt-1 text-sm text-zinc-400">
+            Todas as categorias, exceto Outros, são enviadas automaticamente
+            para a Engenharia.
+          </p>
+        </div>
+
+        <label className="block space-y-2">
+          <span className="text-sm font-semibold text-zinc-200">Categoria</span>
+          <select
+            value={category}
+            onChange={(event) =>
+              setCategory(event.target.value as ProjectDocumentCategory)
+            }
+            disabled={uploading}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500 disabled:opacity-60"
+          >
+            {projectDocumentCategoryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="block space-y-2">
           <span className="text-sm font-semibold text-zinc-200">
             Observação
@@ -1879,7 +2066,7 @@ function LeadFiles({ lead, onLeadChange }: Props) {
             maxLength={160}
             value={observation}
             onChange={(event) => setObservation(event.target.value)}
-            placeholder="Ex.: ART Elétrica"
+            placeholder="Ex.: ART elétrica assinada"
             disabled={uploading}
             className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500 disabled:opacity-60"
           />
@@ -1900,24 +2087,31 @@ function LeadFiles({ lead, onLeadChange }: Props) {
           />
         </label>
 
-        <button
-          type="submit"
-          disabled={
-            uploading ||
-            !selectedFile ||
-            observation.trim().length === 0
-          }
-          className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Upload size={18} />
-          {uploading ? "Enviando..." : "Enviar arquivo"}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={
+              uploading ||
+              !selectedFile ||
+              observation.trim().length === 0
+            }
+            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Upload size={18} />
+            {uploading ? "Enviando..." : "Enviar arquivo"}
+          </button>
+
+          <p className="text-sm text-zinc-500">
+            Destino: {selectedCategory?.technical ? "Engenharia" : "Oportunidade"}
+          </p>
+        </div>
       </form>
 
       {fileMessage && (
         <p
           className={
-            fileMessage.includes("sucesso")
+            fileMessage.includes("sucesso") ||
+            fileMessage.includes("confirmado")
               ? "text-sm text-emerald-400"
               : "text-sm text-red-400"
           }
@@ -1926,54 +2120,145 @@ function LeadFiles({ lead, onLeadChange }: Props) {
         </p>
       )}
 
-      {(lead.files ?? []).length === 0 ? (
-        <EmptyState text="Nenhum arquivo enviado." />
-      ) : (
-        <div className="space-y-3">
-          {(lead.files ?? []).map((file) => (
-            <article
-              key={file.id}
-              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
-            >
-              <p className="font-semibold text-white">
-                📎 {file.observation || "Sem observação"}
-              </p>
-              <p className="mt-1 break-all text-sm text-zinc-400">
-                {file.name}
-              </p>
-              <p className="mt-3 text-xs text-zinc-500">
-                {new Date(file.createdAt).toLocaleString("pt-BR")}
-              </p>
-              <p className="mt-1 text-xs text-zinc-500">
-                Enviado por: {file.uploadedBy?.name ?? "Não informado"}
-              </p>
-              <div className="mt-4 flex gap-2">
-                <a
-                  href={`/api/leads/files?id=${encodeURIComponent(file.id)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-orange-500"
-                >
-                  Baixar
-                </a>
-                <button
-                  type="button"
-                  onClick={() => void removeFile(file.id)}
-                  disabled={deletingId === file.id}
-                  className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
-                >
-                  {deletingId === file.id ? "Excluindo..." : "Excluir"}
-                </button>
-              </div>
-            </article>
-          ))}
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-white">
+              Documentos da Engenharia
+            </h3>
+            <p className="text-sm text-zinc-500">
+              Documentos técnicos vinculados à oportunidade e ao projeto.
+            </p>
+          </div>
+
+          {projectDocuments.length > 0 && (
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
+              Documentação confirmada
+            </span>
+          )}
         </div>
-      )}
+
+        {loadingDocuments ? (
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-zinc-400">
+            Carregando documentos...
+          </div>
+        ) : projectDocuments.length === 0 ? (
+          <EmptyState text="Nenhum documento enviado para a Engenharia." />
+        ) : (
+          <div className="space-y-3">
+            {projectDocuments.map((document) => (
+              <article
+                key={document.id}
+                className="rounded-xl border border-emerald-500/20 bg-zinc-900 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white">
+                      {projectDocumentCategoryLabel(document.type)}
+                    </p>
+                    <p className="mt-1 break-all text-sm text-zinc-400">
+                      {document.name}
+                    </p>
+                    {document.notes && (
+                      <p className="mt-2 text-sm text-zinc-300">
+                        {document.notes}
+                      </p>
+                    )}
+                  </div>
+
+                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400">
+                    Confirmado
+                  </span>
+                </div>
+
+                <p className="mt-3 text-xs text-zinc-500">
+                  {new Date(document.createdAt).toLocaleString("pt-BR")}
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Enviado por: {document.uploadedBy?.name ?? "Não informado"}
+                </p>
+
+                <div className="mt-4 flex gap-2">
+                  <a
+                    href={`/api/projects/documents?id=${encodeURIComponent(
+                      document.id
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-orange-500"
+                  >
+                    Abrir / baixar
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => void removeProjectDocument(document.id)}
+                    disabled={deletingId === document.id}
+                    className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    {deletingId === document.id ? "Excluindo..." : "Excluir"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-lg font-bold text-white">Outros arquivos</h3>
+          <p className="text-sm text-zinc-500">
+            Arquivos gerais mantidos somente dentro da oportunidade.
+          </p>
+        </div>
+
+        {(lead.files ?? []).length === 0 ? (
+          <EmptyState text="Nenhum arquivo da categoria Outros enviado." />
+        ) : (
+          <div className="space-y-3">
+            {(lead.files ?? []).map((file) => (
+              <article
+                key={file.id}
+                className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+              >
+                <p className="font-semibold text-white">
+                  📎 {file.observation || "Sem observação"}
+                </p>
+                <p className="mt-1 break-all text-sm text-zinc-400">
+                  {file.name}
+                </p>
+                <p className="mt-3 text-xs text-zinc-500">
+                  {new Date(file.createdAt).toLocaleString("pt-BR")}
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Enviado por: {file.uploadedBy?.name ?? "Não informado"}
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <a
+                    href={`/api/leads/files?id=${encodeURIComponent(file.id)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-200 hover:border-orange-500"
+                  >
+                    Baixar
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => void removeLeadFile(file.id)}
+                    disabled={deletingId === file.id}
+                    className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    {deletingId === file.id ? "Excluindo..." : "Excluir"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
-
-
 
 
 
