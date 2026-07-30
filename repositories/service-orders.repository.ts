@@ -538,9 +538,10 @@ export async function deleteServiceOrderRepository(
         companyId,
       },
       select: {
-        startedDate: true,
-        completedDate: true,
-        signedAt: true,
+  status: true,
+  startedDate: true,
+  completedDate: true,
+  signedAt: true,
         customerSignature: true,
         technicianSignature: true,
         checklistArt: true,
@@ -622,19 +623,25 @@ export async function deleteServiceOrderRepository(
         ].some(Boolean)
     );
 
-    if (
-      !current ||
-      current.startedDate ||
-      current.completedDate ||
-      current.signedAt ||
-      current.customerSignature ||
-      current.technicianSignature ||
-      checklistStarted ||
-      current.photos.length > 0 ||
-      consolidatedFinancial
-    ) {
-      return null;
-    }
+   if (!current) {
+  return null;
+}
+
+const executionBlocked =
+  current.status !== "CANCELADA" &&
+  Boolean(current.startedDate || current.completedDate);
+
+if (
+  executionBlocked ||
+  current.signedAt ||
+  current.customerSignature ||
+  current.technicianSignature ||
+  checklistStarted ||
+  current.photos.length > 0 ||
+  consolidatedFinancial
+) {
+  return null;
+}
 
     await transaction.serviceOrderTimeline.deleteMany({
       where: {

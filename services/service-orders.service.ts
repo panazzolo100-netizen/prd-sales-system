@@ -393,9 +393,10 @@ export async function deleteCompanyServiceOrder(id: string) {
         ))
   );
   const dependencies = [
-    serviceOrder.startedDate || serviceOrder.completedDate
-      ? "execução operacional iniciada ou concluída"
-      : null,
+  serviceOrder.status !== "CANCELADA" &&
+  (serviceOrder.startedDate || serviceOrder.completedDate)
+    ? "execução operacional iniciada ou concluída"
+    : null,
     checklistStarted ? "checklist operacional preenchido" : null,
     serviceOrder.signedAt ||
     serviceOrder.customerSignature ||

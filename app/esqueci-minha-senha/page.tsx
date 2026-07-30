@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, LoaderCircle, Mail, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  LoaderCircle,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -16,27 +22,53 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  async function requestPasswordReset(event: React.FormEvent<HTMLFormElement>) {
+  async function requestPasswordReset(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError("Informe seu e-mail.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
       const supabase = createClient();
-      const redirectTo = `${window.location.origin}/redefinir-senha`;
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        email.trim(),
-        { redirectTo }
-      );
+      const redirectTo = new URL(
+        "/redefinir-senha",
+        window.location.origin
+      ).toString();
+
+      const { error: resetError } =
+        await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+          redirectTo,
+        });
 
       if (resetError) {
-        setError("Não foi possível enviar as instruções agora. Tente novamente mais tarde.");
+        console.error(
+          "Erro ao solicitar redefinição de senha:",
+          resetError
+        );
+        setError(
+          "Não foi possível enviar as instruções agora. Tente novamente mais tarde."
+        );
         return;
       }
 
       setSuccess(true);
-    } catch {
-      setError("Não foi possível enviar as instruções agora. Tente novamente mais tarde.");
+    } catch (requestError) {
+      console.error(
+        "Erro inesperado ao solicitar redefinição de senha:",
+        requestError
+      );
+      setError(
+        "Não foi possível enviar as instruções agora. Tente novamente mais tarde."
+      );
     } finally {
       setLoading(false);
     }
@@ -57,12 +89,25 @@ export default function ForgotPasswordPage() {
         <section className="rounded-[28px] border border-white/10 bg-zinc-900/70 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-9">
           {success ? (
             <div className="text-center" role="status">
-              <CheckCircle2 className="mx-auto text-emerald-400" size={48} />
-              <h1 className="mt-5 text-3xl font-black tracking-tight">Confira seu e-mail</h1>
-              <p className="mt-4 leading-7 text-zinc-400">{GENERIC_SUCCESS_MESSAGE}</p>
+              <CheckCircle2
+                className="mx-auto text-emerald-400"
+                size={48}
+              />
+
+              <h1 className="mt-5 text-3xl font-black tracking-tight">
+                Confira seu e-mail
+              </h1>
+
+              <p className="mt-4 leading-7 text-zinc-400">
+                {GENERIC_SUCCESS_MESSAGE}
+              </p>
+
               <button
                 type="button"
-                onClick={() => setSuccess(false)}
+                onClick={() => {
+                  setSuccess(false);
+                  setError("");
+                }}
                 className="mt-7 h-12 w-full rounded-xl border border-zinc-700 font-semibold text-zinc-200 transition hover:border-zinc-600 hover:bg-white/5"
               >
                 Enviar novamente
@@ -70,37 +115,85 @@ export default function ForgotPasswordPage() {
             </div>
           ) : (
             <form onSubmit={requestPasswordReset}>
-              <p className="text-sm font-bold uppercase tracking-[0.22em] text-orange-500">Recuperação de acesso</p>
-              <h1 className="mt-3 text-3xl font-black tracking-tight">Esqueceu sua senha?</h1>
-              <p className="mt-3 leading-6 text-zinc-400">Informe seu e-mail para receber as instruções de redefinição.</p>
+              <p className="text-sm font-bold uppercase tracking-[0.22em] text-orange-500">
+                Recuperação de acesso
+              </p>
 
-              <label htmlFor="email" className="mb-2 mt-8 block text-sm font-semibold text-zinc-300">E-mail</label>
+              <h1 className="mt-3 text-3xl font-black tracking-tight">
+                Esqueceu sua senha?
+              </h1>
+
+              <p className="mt-3 leading-6 text-zinc-400">
+                Informe seu e-mail para receber as instruções de
+                redefinição.
+              </p>
+
+              <label
+                htmlFor="email"
+                className="mb-2 mt-8 block text-sm font-semibold text-zinc-300"
+              >
+                E-mail
+              </label>
+
               <div className="relative">
-                <Mail size={19} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                <Mail
+                  size={19}
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"
+                />
+
                 <input
                   id="email"
                   type="email"
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={(event) => { setEmail(event.target.value); setError(""); }}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setError("");
+                  }}
                   placeholder="seuemail@empresa.com.br"
                   className="h-14 w-full rounded-xl border border-zinc-800 bg-black/30 pl-12 pr-4 text-white outline-none transition placeholder:text-zinc-700 hover:border-zinc-700 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
                 />
               </div>
 
-              {error && <div role="alert" className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400">{error}</div>}
+              {error && (
+                <div
+                  role="alert"
+                  className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400"
+                >
+                  {error}
+                </div>
+              )}
 
-              <button type="submit" disabled={loading} className="mt-7 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-orange-500 font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60">
-                {loading ? <><LoaderCircle size={20} className="animate-spin" />Enviando...</> : "Enviar instruções"}
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-7 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-orange-500 font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? (
+                  <>
+                    <LoaderCircle size={20} className="animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Enviar instruções"
+                )}
               </button>
             </form>
           )}
 
-          <Link href="/login" className="mt-7 flex items-center justify-center gap-2 border-t border-white/5 pt-6 text-sm font-semibold text-zinc-400 transition hover:text-white">
-            <ArrowLeft size={16} /> Voltar para o login
+          <Link
+            href="/login"
+            className="mt-7 flex items-center justify-center gap-2 border-t border-white/5 pt-6 text-sm font-semibold text-zinc-400 transition hover:text-white"
+          >
+            <ArrowLeft size={16} />
+            Voltar para o login
           </Link>
-          <div className="mt-5 flex items-center justify-center gap-2 text-xs text-zinc-600"><ShieldCheck size={15} />Acesso protegido pelo Supabase Auth</div>
+
+          <div className="mt-5 flex items-center justify-center gap-2 text-xs text-zinc-600">
+            <ShieldCheck size={15} />
+            Acesso protegido pelo Supabase Auth
+          </div>
         </section>
       </div>
     </main>
