@@ -7,6 +7,8 @@ export type ManagedUserData = {
   role: UserRole;
   companyId: string;
   clientId: string | null;
+  forcePasswordChange?: boolean;
+  temporaryPassword?: boolean;
 };
 
 export async function listManagedUsers(input: {
@@ -39,10 +41,24 @@ export async function listManagedUsers(input: {
         email: true,
         role: true,
         clientId: true,
+        forcePasswordChange: true,
+        temporaryPassword: true,
         createdAt: true,
         updatedAt: true,
-        company: { select: { id: true, name: true, tradeName: true } },
-        client: { select: { id: true, name: true, document: true } },
+        company: {
+          select: {
+            id: true,
+            name: true,
+            tradeName: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            document: true,
+          },
+        },
       },
     }),
     prisma.user.count({ where }),
@@ -61,8 +77,15 @@ export function findManagedUser(id: string, companyId: string) {
       role: true,
       companyId: true,
       clientId: true,
+      forcePasswordChange: true,
+      temporaryPassword: true,
       createdAt: true,
-      client: { select: { id: true, name: true } },
+      client: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       _count: {
         select: {
           leads: true,
@@ -77,13 +100,19 @@ export function findManagedUser(id: string, companyId: string) {
 export function findManagedUserByEmail(email: string) {
   return prisma.user.findUnique({
     where: { email },
-    select: { id: true, companyId: true },
+    select: {
+      id: true,
+      companyId: true,
+    },
   });
 }
 
 export function countCompanyExecutives(companyId: string) {
   return prisma.user.count({
-    where: { companyId, role: "EXECUTIVO" },
+    where: {
+      companyId,
+      role: "EXECUTIVO",
+    },
   });
 }
 
@@ -91,21 +120,38 @@ export function findAvailableClients(companyId: string) {
   return prisma.client.findMany({
     where: { companyId },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, document: true },
+    select: {
+      id: true,
+      name: true,
+      document: true,
+    },
   });
 }
 
 export function findCompanyClient(id: string, companyId: string) {
   return prisma.client.findFirst({
-    where: { id, companyId },
-    select: { id: true },
+    where: {
+      id,
+      companyId,
+    },
+    select: {
+      id: true,
+    },
   });
 }
 
 export function createManagedUser(data: ManagedUserData) {
   return prisma.user.create({
     data,
-    select: { id: true, name: true, email: true, role: true, clientId: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      clientId: true,
+      forcePasswordChange: true,
+      temporaryPassword: true,
+    },
   });
 }
 
@@ -115,34 +161,63 @@ export function updateManagedUser(
   data: Pick<ManagedUserData, "name" | "role" | "clientId">
 ) {
   return prisma.user.update({
-    where: { id, companyId },
+    where: {
+      id,
+      companyId,
+    },
     data,
-    select: { id: true, name: true, email: true, role: true, clientId: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      clientId: true,
+      forcePasswordChange: true,
+      temporaryPassword: true,
+    },
   });
 }
 
-export async function deleteManagedUser(id: string, companyId: string) {
-  return prisma.$transaction(async (transaction) => {
-    const user = await transaction.user.findFirst({
-      where: { id, companyId },
-      select: {
-        _count: {
-          select: {
-            leads: true,
-            activities: true,
-            projectDocuments: true,
+export async function deleteManagedUser(
+  id: string,
+  companyId: string
+) {
+  return prisma.$transaction(
+    async (transaction) => {
+      const user = await transaction.user.findFirst({
+        where: {
+          id,
+          companyId,
+        },
+        select: {
+          _count: {
+            select: {
+              leads: true,
+              activities: true,
+              projectDocuments: true,
+            },
           },
         },
-      },
-    });
-    if (
-      !user ||
-      user._count.leads > 0 ||
-      user._count.activities > 0 ||
-      user._count.projectDocuments > 0
-    ) {
-      return null;
+      });
+
+      if (
+        !user ||
+        user._count.leads > 0 ||
+        user._count.activities > 0 ||
+        user._count.projectDocuments > 0
+      ) {
+        return null;
+      }
+
+      return transaction.user.delete({
+        where: {
+          id,
+          companyId,
+        },
+      });
+    },
+    {
+      isolationLevel: "Serializable",
     }
-    return transaction.user.delete({ where: { id, companyId } });
-  }, { isolationLevel: "Serializable" });
+  );
 }

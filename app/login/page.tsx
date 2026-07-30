@@ -8,12 +8,17 @@ import {
   Mail,
   ShieldCheck,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
 import { CompanyLogo } from "@/components/layout/CompanyLogo";
+import { createClient } from "@/lib/supabase/client";
+
+type PasswordStatusResponse = {
+  forcePasswordChange?: boolean;
+  error?: string;
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,8 +61,41 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    try {
+      const response = await fetch(
+        "/api/users/password",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const data =
+        (await response.json()) as PasswordStatusResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ??
+            "Não foi possível verificar o primeiro acesso."
+        );
+      }
+
+      router.replace(
+        data.forcePasswordChange
+          ? "/primeiro-acesso"
+          : "/"
+      );
+      router.refresh();
+    } catch (requestError) {
+      await supabase.auth.signOut();
+
+      setLoading(false);
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Não foi possível concluir o login."
+      );
+    }
   }
 
   return (
@@ -164,7 +202,9 @@ export default function LoginPage() {
                       required
                       value={email}
                       onChange={(event) => {
-                        setEmail(event.target.value);
+                        setEmail(
+                          event.target.value
+                        );
                         setError("");
                       }}
                       placeholder="seuemail@empresa.com.br"

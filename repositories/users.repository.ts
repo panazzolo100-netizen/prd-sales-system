@@ -31,3 +31,25 @@ export function listUsersByCompany(
     },
   });
 }
+
+export function completeUserFirstAccess(
+  userId: string,
+  companyId: string
+) {
+  return prisma.user.update({
+    where: {
+      id: userId,
+      companyId,
+    },
+    data: {
+      forcePasswordChange: false,
+      temporaryPassword: false,
+    },
+    select: {
+      id: true,
+      email: true,
+      forcePasswordChange: true,
+      temporaryPassword: true,
+    },
+  });
+}

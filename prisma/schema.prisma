@@ -133,6 +133,10 @@ model User {
 
   role UserRole @default(OPERADOR)
 
+  forcePasswordChange Boolean @default(true)
+
+  temporaryPassword Boolean @default(true)
+
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
